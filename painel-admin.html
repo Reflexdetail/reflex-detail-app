@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - Reflex Detail</title>
+    
+    <!-- Tailwind CSS para estilização rápida e moderna -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fontes do Google -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Estilos personalizados para complementar o Tailwind */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* bg-gray-900 */
+        }
+        .font-brand {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Efeito de transição suave em botões e inputs */
+        .transition-all {
+            transition: all 0.3s ease-in-out;
+        }
+        /* Estilização da barra de rolagem */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* bg-gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4f46e5; /* bg-indigo-600 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6366f1; /* bg-indigo-500 */
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <!-- Container Principal -->
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+
+        <!-- Cabeçalho -->
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-brand text-indigo-400">Reflex Detail</h1>
+            <p class="text-xl text-gray-400 mt-2">Painel Administrativo</p>
+        </header>
+
+        <!-- Seção Principal de Gerenciamento -->
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Coluna do Formulário (Esquerda) -->
+            <div class="lg:col-span-1 bg-gray-800 p-6 rounded-lg shadow-2xl">
+                <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 pb-2">Gerenciar Serviço</h2>
+                <form id="serviceForm" class="space-y-4">
+                    <input type="hidden" id="serviceId">
+                    <div>
+                        <label for="serviceName" class="block text-sm font-medium text-gray-300">Nome do Serviço</label>
+                        <input type="text" id="serviceName" name="serviceName" required
+                               class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                    </div>
+                    <div>
+                        <label for="serviceDescription" class="block text-sm font-medium text-gray-300">Descrição</label>
+                        <textarea id="serviceDescription" name="serviceDescription" rows="4" required
+                                  class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 transition-all"></textarea>
+                    </div>
+                    <div>
+                        <label for="serviceDuration" class="block text-sm font-medium text-gray-300">Duração (em minutos)</label>
+                        <input type="number" id="serviceDuration" name="serviceDuration" required min="1"
+                               class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                    </div>
+                    <div class="flex items-center space-x-4 pt-2">
+                        <button type="submit" id="saveButton"
+                                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all">
+                            Salvar Novo Serviço
+                        </button>
+                         <button type="button" id="cancelButton" style="display: none;"
+                                class="w-full flex justify-center py-2 px-4 border border-gray-500 rounded-md shadow-sm text-sm font-medium text-gray-200 bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all">
+                            Cancelar Edição
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Coluna da Lista de Serviços (Direita) -->
+            <div class="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-2xl">
+                <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 pb-2">Serviços Cadastrados</h2>
+                <div id="serviceList" class="space-y-4">
+                    <!-- Serviços carregados pelo JavaScript aparecerão aqui -->
+                    <p id="loadingMessage" class="text-center text-gray-400 py-8">Carregando serviços...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal de Confirmação para Exclusão -->
+    <div id="deleteConfirmationModal" class="fixed z-10 inset-0 overflow-y-auto" style="display: none;">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-gray-900 opacity-75"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-900 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 class="text-lg leading-6 font-medium text-white" id="modal-title">Excluir Serviço</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-400">
+                                    Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="confirmDeleteButton" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        Excluir
+                    </button>
+                    <button type="button" id="cancelDeleteButton" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-gray-700 text-base font-medium text-white hover:bg-gray-600 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Scripts do Firebase e da Aplicação -->
+    <script type="module">
+        // Importações necessárias do SDK do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            onSnapshot,
+            doc,
+            deleteDoc,
+            updateDoc,
+            query,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIGURAÇÃO INICIAL ---
+        
+        // Ativa logs detalhados para facilitar a depuração
+        setLogLevel('Debug');
+        
+        // Configuração do Firebase, injetada pelo ambiente do Canvas
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'reflex-detail-agendamento';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Variáveis globais para os serviços do Firebase e dados do usuário
+        let app, auth, db, userId;
+        let serviceToDeleteId = null;
+
+        // --- ELEMENTOS DO DOM ---
+        const serviceForm = document.getElementById('serviceForm');
+        const serviceIdInput = document.getElementById('serviceId');
+        const serviceNameInput = document.getElementById('serviceName');
+        const serviceDescriptionInput = document.getElementById('serviceDescription');
+        const serviceDurationInput = document.getElementById('serviceDuration');
+        const saveButton = document.getElementById('saveButton');
+        const cancelButton = document.getElementById('cancelButton');
+        const serviceList = document.getElementById('serviceList');
+        const loadingMessage = document.getElementById('loadingMessage');
+
+        // Elementos do Modal
+        const deleteModal = document.getElementById('deleteConfirmationModal');
+        const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+        const cancelDeleteButton = document.getElementById('cancelDeleteButton');
+        
+        
+        // --- FUNÇÕES PRINCIPAIS ---
+
+        /**
+         * Inicializa o Firebase, autentica o usuário e anexa os listeners de eventos.
+         */
+        async function initializeAppAndAuth() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Escuta mudanças no estado de autenticação
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        console.log("Usuário autenticado:", user.uid);
+                        userId = user.uid;
+                        // Após autenticar, busca os serviços
+                        fetchServices();
+                    } else {
+                        console.log("Nenhum usuário. Autenticando...");
+                        // Se não houver usuário, tenta autenticar
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                });
+
+                // Anexa listeners para os formulários e botões
+                setupEventListeners();
+
+            } catch (error) {
+                console.error("Erro ao inicializar o Firebase:", error);
+                serviceList.innerHTML = `<p class="text-red-400">Erro de conexão. Verifique o console para mais detalhes.</p>`;
+            }
+        }
+
+        /**
+         * Anexa os listeners de eventos aos elementos da página.
+         */
+        function setupEventListeners() {
+            serviceForm.addEventListener('submit', handleFormSubmit);
+            cancelButton.addEventListener('click', resetForm);
+            
+            // Listeners do modal de exclusão
+            cancelDeleteButton.addEventListener('click', () => deleteModal.style.display = 'none');
+            confirmDeleteButton.addEventListener('click', deleteService);
+        }
+
+        /**
+         * Busca e exibe os serviços em tempo real do Firestore.
+         */
+        function fetchServices() {
+            // O caminho da coleção agora é público para facilitar o acesso futuro do cliente
+            const servicesCollectionPath = `artifacts/${appId}/public/data/services`;
+            const q = query(collection(db, servicesCollectionPath));
+
+            onSnapshot(q, (snapshot) => {
+                loadingMessage.style.display = 'none';
+                if (snapshot.empty) {
+                    serviceList.innerHTML = '<p class="text-center text-gray-400 py-8">Nenhum serviço cadastrado ainda.</p>';
+                    return;
+                }
+
+                serviceList.innerHTML = ''; // Limpa a lista antes de re-renderizar
+                snapshot.forEach(doc => {
+                    const service = doc.data();
+                    const serviceElement = createServiceElement(doc.id, service);
+                    serviceList.appendChild(serviceElement);
+                });
+            }, (error) => {
+                console.error("Erro ao buscar serviços:", error);
+                serviceList.innerHTML = `<p class="text-red-400">Não foi possível carregar os serviços.</p>`;
+            });
+        }
+        
+        /**
+         * Manipula o envio do formulário, decidindo se deve criar ou atualizar um serviço.
+         * @param {Event} e - O evento de submit do formulário.
+         */
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const serviceId = serviceIdInput.value;
+            const serviceData = {
+                name: serviceNameInput.value.trim(),
+                description: serviceDescriptionInput.value.trim(),
+                duration: parseInt(serviceDurationInput.value, 10),
+                createdAt: new Date()
+            };
+
+            // Validação simples
+            if (!serviceData.name || !serviceData.description || !serviceData.duration) {
+                console.error("Todos os campos são obrigatórios.");
+                // Adicionar feedback visual aqui se desejar
+                return;
+            }
+
+            try {
+                const servicesCollectionPath = `artifacts/${appId}/public/data/services`;
+                if (serviceId) {
+                    // Atualizar serviço existente
+                    const serviceDocRef = doc(db, servicesCollectionPath, serviceId);
+                    await updateDoc(serviceDocRef, {
+                        name: serviceData.name,
+                        description: serviceData.description,
+                        duration: serviceData.duration
+                    });
+                    console.log("Serviço atualizado com sucesso!");
+                } else {
+                    // Criar novo serviço
+                    await addDoc(collection(db, servicesCollectionPath), serviceData);
+                    console.log("Serviço salvo com sucesso!");
+                }
+                resetForm();
+            } catch (error) {
+                console.error("Erro ao salvar serviço:", error);
+            }
+        }
+        
+        /**
+         * Cria o elemento HTML para um serviço individual.
+         * @param {string} id - O ID do documento do Firestore.
+         * @param {object} service - O objeto de dados do serviço.
+         * @returns {HTMLElement} O elemento div do serviço.
+         */
+        function createServiceElement(id, service) {
+            const div = document.createElement('div');
+            div.className = 'bg-gray-700 p-4 rounded-lg flex justify-between items-center transition-all hover:bg-gray-600';
+            div.setAttribute('data-id', id);
+
+            div.innerHTML = `
+                <div>
+                    <h3 class="font-bold text-lg text-indigo-300">${service.name}</h3>
+                    <p class="text-sm text-gray-400">${service.description}</p>
+                    <p class="text-sm text-gray-300 mt-2">Duração: ${service.duration} minutos</p>
+                </div>
+                <div class="flex space-x-2">
+                    <button class="edit-btn p-2 rounded-full hover:bg-indigo-500 transition-all" title="Editar Serviço">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                    </button>
+                    <button class="delete-btn p-2 rounded-full hover:bg-red-500 transition-all" title="Excluir Serviço">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            `;
+            
+            // Adiciona listeners para os botões de editar e excluir
+            div.querySelector('.edit-btn').addEventListener('click', () => prepareEdit(id, service));
+            div.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(id));
+            
+            return div;
+        }
+
+        /**
+         * Prepara o formulário para editar um serviço existente.
+         * @param {string} id - O ID do documento do Firestore.
+         * @param {object} service - O objeto de dados do serviço.
+         */
+        function prepareEdit(id, service) {
+            serviceIdInput.value = id;
+            serviceNameInput.value = service.name;
+            serviceDescriptionInput.value = service.description;
+            serviceDurationInput.value = service.duration;
+
+            saveButton.textContent = 'Atualizar Serviço';
+            cancelButton.style.display = 'inline-flex';
+            window.scrollTo(0, 0); // Rola para o topo para ver o formulário
+        }
+
+        /**
+         * Reseta o formulário para o estado inicial de criação.
+         */
+        function resetForm() {
+            serviceForm.reset();
+            serviceIdInput.value = '';
+            saveButton.textContent = 'Salvar Novo Serviço';
+            cancelButton.style.display = 'none';
+        }
+
+        /**
+         * Abre o modal de confirmação para exclusão.
+         * @param {string} id - O ID do serviço a ser excluído.
+         */
+        function openDeleteModal(id) {
+            serviceToDeleteId = id;
+            deleteModal.style.display = 'block';
+        }
+
+        /**
+         * Exclui o serviço selecionado do Firestore.
+         */
+        async function deleteService() {
+            if (!serviceToDeleteId) return;
+            try {
+                const servicesCollectionPath = `artifacts/${appId}/public/data/services`;
+                const serviceDocRef = doc(db, servicesCollectionPath, serviceToDeleteId);
+                await deleteDoc(serviceDocRef);
+                console.log("Serviço excluído com sucesso!");
+            } catch (error) {
+                console.error("Erro ao excluir serviço:", error);
+            } finally {
+                serviceToDeleteId = null;
+                deleteModal.style.display = 'none';
+            }
+        }
+        
+        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
+        initializeAppAndAuth();
+
+    </script>
+</body>
+</html>
