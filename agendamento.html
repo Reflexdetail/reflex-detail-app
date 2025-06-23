@@ -103,7 +103,10 @@
 
     <!-- Scripts do Firebase e da Aplicação -->
     <script type="module">
+        // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        // Importação da autenticação adicionada
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- CONFIGURAÇÃO INICIAL ---
@@ -120,6 +123,7 @@
         
         const appId = firebaseConfig.projectId;
         let db;
+        let auth;
 
         // --- ELEMENTOS DO DOM ---
         const serviceListContainer = document.getElementById('serviceList');
@@ -132,15 +136,28 @@
         /**
          * Função principal que inicializa o Firebase e busca os serviços.
          */
-        function main() {
+        async function main() {
             try {
                 if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("COLE_SUA")) {
                     loadingMessage.innerHTML = `<p class="text-red-400 text-center col-span-2">Erro: A configuração do Firebase não foi preenchida.</p>`;
                     return;
                 }
                 const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
                 db = getFirestore(app);
-                fetchServices();
+                
+                // Lógica de autenticação adicionada
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        // Usuário está logado (anonimamente), busca os serviços.
+                        console.log("Autenticado anonimamente. Buscando serviços...");
+                        fetchServices();
+                    } else {
+                        // Se não houver usuário, faz o login anônimo.
+                        signInAnonymously(auth);
+                    }
+                });
+
             } catch (error) {
                 console.error("Erro ao inicializar o Firebase:", error);
                 loadingMessage.innerHTML = `<p class="text-red-400 col-span-2">Erro de conexão com o banco de dados.</p>`;
