@@ -94,7 +94,7 @@
                 <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 pb-2">Serviços Cadastrados</h2>
                 <div id="serviceList" class="space-y-4">
                     <!-- Serviços carregados pelo JavaScript aparecerão aqui -->
-                    <p id="loadingMessage" class="text-center text-gray-400 py-8">Carregando serviços...</p>
+                    <p id="loadingMessage" class="text-center text-gray-400 py-8">Conectando ao banco de dados...</p>
                 </div>
             </div>
         </main>
@@ -142,7 +142,7 @@
     <script type="module">
         // Importações necessárias do SDK do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
             collection, 
@@ -160,11 +160,27 @@
         // Ativa logs detalhados para facilitar a depuração
         setLogLevel('Debug');
         
-        // Configuração do Firebase, injetada pelo ambiente do Canvas
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'reflex-detail-agendamento';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
+        // *******************************************************************
+        // * AÇÃO NECESSÁRIA: COLE A SUA CONFIGURAÇÃO DO FIREBASE AQUI      *
+        // *******************************************************************
+        // 1. Vá para o console do seu projeto Firebase.
+        // 2. Clique no ícone de engrenagem (Configurações do projeto).
+        // 3. Na aba "Geral", role para baixo até "Seus apps".
+        // 4. Clique em "</>" para ver a configuração do seu app Web.
+        // 5. Copie o objeto `firebaseConfig` que aparece e cole no lugar
+        //    do objeto de exemplo abaixo.
+        const firebaseConfig = {
+  apiKey: "AIzaSyDx7BM9aUohmsgT0v-2crV_miMLC58ngZk",
+  authDomain: "reflex-detail-app.firebaseapp.com",
+  projectId: "reflex-detail-app",
+  storageBucket: "reflex-detail-app.firebasestorage.app",
+  messagingSenderId: "632260839620",
+  appId: "1:632260839620:web:a8a5bc4da9b69f8cfa6191"
+};
+        // *******************************************************************
+
+        const appId = firebaseConfig.projectId;
+
         // Variáveis globais para os serviços do Firebase e dados do usuário
         let app, auth, db, userId;
         let serviceToDeleteId = null;
@@ -193,6 +209,12 @@
          */
         async function initializeAppAndAuth() {
             try {
+                // Validação para garantir que a config foi preenchida
+                if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("COLE_SUA")) {
+                    loadingMessage.innerHTML = `<p class="text-red-400 text-center">Erro: A configuração do Firebase não foi preenchida. Edite o arquivo 'painel-admin.html' e adicione a sua chave do Firebase.</p>`;
+                    return;
+                }
+                
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
@@ -205,13 +227,8 @@
                         // Após autenticar, busca os serviços
                         fetchServices();
                     } else {
-                        console.log("Nenhum usuário. Autenticando...");
-                        // Se não houver usuário, tenta autenticar
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
+                        console.log("Nenhum usuário. Autenticando anonimamente...");
+                        await signInAnonymously(auth);
                     }
                 });
 
@@ -221,6 +238,7 @@
             } catch (error) {
                 console.error("Erro ao inicializar o Firebase:", error);
                 serviceList.innerHTML = `<p class="text-red-400">Erro de conexão. Verifique o console para mais detalhes.</p>`;
+                loadingMessage.style.display = 'none';
             }
         }
 
@@ -240,7 +258,6 @@
          * Busca e exibe os serviços em tempo real do Firestore.
          */
         function fetchServices() {
-            // O caminho da coleção agora é público para facilitar o acesso futuro do cliente
             const servicesCollectionPath = `artifacts/${appId}/public/data/services`;
             const q = query(collection(db, servicesCollectionPath));
 
@@ -280,7 +297,6 @@
             // Validação simples
             if (!serviceData.name || !serviceData.description || !serviceData.duration) {
                 console.error("Todos os campos são obrigatórios.");
-                // Adicionar feedback visual aqui se desejar
                 return;
             }
 
