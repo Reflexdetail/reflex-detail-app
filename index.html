@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Administrativo - Reflex Detail</title>
     
-    <!-- Tailwind CSS para estilização rápida e moderna -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Fontes do Google -->
@@ -14,7 +14,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
 
     <style>
-        /* Estilos personalizados para complementar o Tailwind */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #111827; /* bg-gray-900 */
@@ -22,7 +21,6 @@
         .font-brand {
             font-family: 'Orbitron', sans-serif;
         }
-        /* Efeito de transição suave em botões e inputs */
         .transition-all {
             transition: all 0.3s ease-in-out;
         }
@@ -39,6 +37,11 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #6366f1; /* bg-indigo-500 */
+        }
+        /* Estilo para botão desabilitado */
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
         }
     </style>
 </head>
@@ -93,7 +96,6 @@
             <div class="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-2xl">
                 <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 pb-2">Serviços Cadastrados</h2>
                 <div id="serviceList" class="space-y-4">
-                    <!-- Serviços carregados pelo JavaScript aparecerão aqui -->
                     <p id="loadingMessage" class="text-center text-gray-400 py-8">Conectando ao banco de dados...</p>
                 </div>
             </div>
@@ -152,23 +154,16 @@
             deleteDoc,
             updateDoc,
             query,
+            serverTimestamp, // Importado para usar o timestamp do servidor
             setLogLevel
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- CONFIGURAÇÃO INICIAL ---
-        
-        // Ativa logs detalhados para facilitar a depuração
         setLogLevel('Debug');
         
         // *******************************************************************
         // * AÇÃO NECESSÁRIA: COLE A SUA CONFIGURAÇÃO DO FIREBASE AQUI      *
         // *******************************************************************
-        // 1. Vá para o console do seu projeto Firebase.
-        // 2. Clique no ícone de engrenagem (Configurações do projeto).
-        // 3. Na aba "Geral", role para baixo até "Seus apps".
-        // 4. Clique em "</>" para ver a configuração do seu app Web.
-        // 5. Copie o objeto `firebaseConfig` que aparece e cole no lugar
-        //    do objeto de exemplo abaixo.
         const firebaseConfig = {
   apiKey: "AIzaSyDx7BM9aUohmsgT0v-2crV_miMLC58ngZk",
   authDomain: "reflex-detail-app.firebaseapp.com",
@@ -180,8 +175,6 @@
         // *******************************************************************
 
         const appId = firebaseConfig.projectId;
-
-        // Variáveis globais para os serviços do Firebase e dados do usuário
         let app, auth, db, userId;
         let serviceToDeleteId = null;
 
@@ -195,23 +188,18 @@
         const cancelButton = document.getElementById('cancelButton');
         const serviceList = document.getElementById('serviceList');
         const loadingMessage = document.getElementById('loadingMessage');
-
-        // Elementos do Modal
         const deleteModal = document.getElementById('deleteConfirmationModal');
         const confirmDeleteButton = document.getElementById('confirmDeleteButton');
         const cancelDeleteButton = document.getElementById('cancelDeleteButton');
         
-        
-        // --- FUNÇÕES PRINCIPAIS ---
-
         /**
          * Inicializa o Firebase, autentica o usuário e anexa os listeners de eventos.
          */
         async function initializeAppAndAuth() {
             try {
-                // Validação para garantir que a config foi preenchida
+                // VERIFICAÇÃO ADICIONADA: Checa se a configuração foi preenchida
                 if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("COLE_SUA")) {
-                    loadingMessage.innerHTML = `<p class="text-red-400 text-center">Erro: A configuração do Firebase não foi preenchida. Edite o arquivo 'painel-admin.html' e adicione a sua chave do Firebase.</p>`;
+                    loadingMessage.innerHTML = `<p class="text-red-400 text-center font-bold">ERRO: A configuração do Firebase não foi preenchida.<br>Edite o arquivo 'index.html' e adicione a sua chave do Firebase.</p>`;
                     return;
                 }
                 
@@ -219,37 +207,27 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Escuta mudanças no estado de autenticação
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
-                        console.log("Usuário autenticado:", user.uid);
+                        console.log("Usuário autenticado com sucesso:", user.uid);
                         userId = user.uid;
-                        // Após autenticar, busca os serviços
                         fetchServices();
                     } else {
-                        console.log("Nenhum usuário. Autenticando anonimamente...");
+                        console.log("Nenhum usuário logado. Tentando autenticação anônima...");
                         await signInAnonymously(auth);
                     }
                 });
-
-                // Anexa listeners para os formulários e botões
                 setupEventListeners();
 
             } catch (error) {
-                console.error("Erro ao inicializar o Firebase:", error);
-                serviceList.innerHTML = `<p class="text-red-400">Erro de conexão. Verifique o console para mais detalhes.</p>`;
-                loadingMessage.style.display = 'none';
+                console.error("Erro CRÍTICO ao inicializar o Firebase:", error);
+                loadingMessage.innerHTML = `<p class="text-red-400">Erro de conexão. Verifique o console (F12) para mais detalhes.</p>`;
             }
         }
 
-        /**
-         * Anexa os listeners de eventos aos elementos da página.
-         */
         function setupEventListeners() {
             serviceForm.addEventListener('submit', handleFormSubmit);
             cancelButton.addEventListener('click', resetForm);
-            
-            // Listeners do modal de exclusão
             cancelDeleteButton.addEventListener('click', () => deleteModal.style.display = 'none');
             confirmDeleteButton.addEventListener('click', deleteService);
         }
@@ -258,45 +236,49 @@
          * Busca e exibe os serviços em tempo real do Firestore.
          */
         function fetchServices() {
+            console.log("Buscando serviços no banco de dados...");
             const servicesCollectionPath = `artifacts/${appId}/public/data/services`;
             const q = query(collection(db, servicesCollectionPath));
 
             onSnapshot(q, (snapshot) => {
+                console.log(`Snapshot recebido. Número de documentos: ${snapshot.size}`);
                 loadingMessage.style.display = 'none';
                 if (snapshot.empty) {
                     serviceList.innerHTML = '<p class="text-center text-gray-400 py-8">Nenhum serviço cadastrado ainda.</p>';
                     return;
                 }
 
-                serviceList.innerHTML = ''; // Limpa a lista antes de re-renderizar
-                snapshot.forEach(doc => {
+                serviceList.innerHTML = '';
+                snapshot.docs.sort((a, b) => a.data().name.localeCompare(b.data().name)).forEach(doc => {
                     const service = doc.data();
                     const serviceElement = createServiceElement(doc.id, service);
                     serviceList.appendChild(serviceElement);
                 });
             }, (error) => {
-                console.error("Erro ao buscar serviços:", error);
-                serviceList.innerHTML = `<p class="text-red-400">Não foi possível carregar os serviços.</p>`;
+                console.error("Erro ao buscar serviços via Snapshot:", error);
+                serviceList.innerHTML = `<p class="text-red-400">Não foi possível carregar os serviços. Verifique o console (F12).</p>`;
             });
         }
         
-        /**
-         * Manipula o envio do formulário, decidindo se deve criar ou atualizar um serviço.
-         * @param {Event} e - O evento de submit do formulário.
-         */
         async function handleFormSubmit(e) {
             e.preventDefault();
+            
+            // Feedback visual: desabilita o botão para evitar cliques duplos
+            saveButton.disabled = true;
+            saveButton.textContent = 'Salvando...';
+
             const serviceId = serviceIdInput.value;
             const serviceData = {
                 name: serviceNameInput.value.trim(),
                 description: serviceDescriptionInput.value.trim(),
-                duration: parseInt(serviceDurationInput.value, 10),
-                createdAt: new Date()
+                duration: parseInt(serviceDurationInput.value, 10)
             };
 
-            // Validação simples
             if (!serviceData.name || !serviceData.description || !serviceData.duration) {
                 console.error("Todos os campos são obrigatórios.");
+                alert("Por favor, preencha todos os campos."); // Simples alerta para o usuário
+                saveButton.disabled = false;
+                saveButton.textContent = serviceId ? 'Atualizar Serviço' : 'Salvar Novo Serviço';
                 return;
             }
 
@@ -304,35 +286,32 @@
                 const servicesCollectionPath = `artifacts/${appId}/public/data/services`;
                 if (serviceId) {
                     // Atualizar serviço existente
+                    console.log(`Atualizando serviço com ID: ${serviceId}`);
                     const serviceDocRef = doc(db, servicesCollectionPath, serviceId);
-                    await updateDoc(serviceDocRef, {
-                        name: serviceData.name,
-                        description: serviceData.description,
-                        duration: serviceData.duration
-                    });
+                    await updateDoc(serviceDocRef, serviceData);
                     console.log("Serviço atualizado com sucesso!");
                 } else {
                     // Criar novo serviço
+                    console.log("Criando novo serviço...");
+                    serviceData.createdAt = serverTimestamp(); // Usa o timestamp do servidor
                     await addDoc(collection(db, servicesCollectionPath), serviceData);
                     console.log("Serviço salvo com sucesso!");
                 }
                 resetForm();
             } catch (error) {
-                console.error("Erro ao salvar serviço:", error);
+                console.error("Erro ao salvar serviço no Firestore:", error);
+                alert("Ocorreu um erro ao salvar o serviço. Verifique o console (F12) para detalhes.");
+            } finally {
+                 // Reabilita o botão após a operação
+                saveButton.disabled = false;
+                // O texto do botão será resetado pela função resetForm
             }
         }
         
-        /**
-         * Cria o elemento HTML para um serviço individual.
-         * @param {string} id - O ID do documento do Firestore.
-         * @param {object} service - O objeto de dados do serviço.
-         * @returns {HTMLElement} O elemento div do serviço.
-         */
         function createServiceElement(id, service) {
             const div = document.createElement('div');
             div.className = 'bg-gray-700 p-4 rounded-lg flex justify-between items-center transition-all hover:bg-gray-600';
             div.setAttribute('data-id', id);
-
             div.innerHTML = `
                 <div>
                     <h3 class="font-bold text-lg text-indigo-300">${service.name}</h3>
@@ -348,68 +327,52 @@
                     </button>
                 </div>
             `;
-            
-            // Adiciona listeners para os botões de editar e excluir
             div.querySelector('.edit-btn').addEventListener('click', () => prepareEdit(id, service));
             div.querySelector('.delete-btn').addEventListener('click', () => openDeleteModal(id));
-            
             return div;
         }
 
-        /**
-         * Prepara o formulário para editar um serviço existente.
-         * @param {string} id - O ID do documento do Firestore.
-         * @param {object} service - O objeto de dados do serviço.
-         */
         function prepareEdit(id, service) {
             serviceIdInput.value = id;
             serviceNameInput.value = service.name;
             serviceDescriptionInput.value = service.description;
             serviceDurationInput.value = service.duration;
-
             saveButton.textContent = 'Atualizar Serviço';
+            saveButton.disabled = false; // Garante que o botão esteja habilitado
             cancelButton.style.display = 'inline-flex';
-            window.scrollTo(0, 0); // Rola para o topo para ver o formulário
+            window.scrollTo(0, 0);
         }
 
-        /**
-         * Reseta o formulário para o estado inicial de criação.
-         */
         function resetForm() {
             serviceForm.reset();
             serviceIdInput.value = '';
             saveButton.textContent = 'Salvar Novo Serviço';
+            saveButton.disabled = false; // Garante que o botão esteja habilitado
             cancelButton.style.display = 'none';
         }
 
-        /**
-         * Abre o modal de confirmação para exclusão.
-         * @param {string} id - O ID do serviço a ser excluído.
-         */
         function openDeleteModal(id) {
             serviceToDeleteId = id;
             deleteModal.style.display = 'block';
         }
 
-        /**
-         * Exclui o serviço selecionado do Firestore.
-         */
         async function deleteService() {
             if (!serviceToDeleteId) return;
             try {
+                console.log(`Excluindo serviço com ID: ${serviceToDeleteId}`);
                 const servicesCollectionPath = `artifacts/${appId}/public/data/services`;
                 const serviceDocRef = doc(db, servicesCollectionPath, serviceToDeleteId);
                 await deleteDoc(serviceDocRef);
                 console.log("Serviço excluído com sucesso!");
             } catch (error) {
                 console.error("Erro ao excluir serviço:", error);
+                alert("Ocorreu um erro ao excluir o serviço.");
             } finally {
                 serviceToDeleteId = null;
                 deleteModal.style.display = 'none';
             }
         }
         
-        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
         initializeAppAndAuth();
 
     </script>
