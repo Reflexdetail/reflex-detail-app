@@ -65,7 +65,7 @@
     <div class="container mx-auto p-4 md:p-8">
 
         <header class="mb-8">
-            <div class="flex justify-between items-center">
+            <div class="flex flex-wrap justify-between items-center gap-4">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-brand text-indigo-400">Agenda Diária</h1>
                     <p id="current-date-display" class="text-xl text-gray-400 mt-1"></p>
@@ -112,11 +112,7 @@
         const datePickerInput = document.getElementById('date-picker');
         const currentDateDisplay = document.getElementById('current-date-display');
 
-        /**
-         * Formata uma data para exibição no cabeçalho.
-         * @param {Date} date - O objeto de data a ser formatado.
-         * @returns {string} A data formatada.
-         */
+        // --- FUNÇÕES DE FORMATAÇÃO ---
         function formatDisplayDate(date) {
             return date.toLocaleDateString('pt-BR', {
                 weekday: 'long',
@@ -126,12 +122,24 @@
             });
         }
 
-        /**
-         * Busca e exibe os agendamentos para uma data específica.
-         * @param {Date} date - A data para a qual buscar os agendamentos.
-         */
+        function formatPhoneNumberForDisplay(phone) {
+            if (!phone || typeof phone !== 'string' || phone.length < 10) {
+                return phone || 'N/A'; // Retorna o original ou N/A se for inválido
+            }
+            const ddd = phone.substring(0, 2);
+            if (phone.length === 11) {
+                const part1 = phone.substring(2, 7);
+                const part2 = phone.substring(7);
+                return `(${ddd}) ${part1}-${part2}`;
+            } else { // length === 10
+                const part1 = phone.substring(2, 6);
+                const part2 = phone.substring(6);
+                return `(${ddd}) ${part1}-${part2}`;
+            }
+        }
+
+        // --- LÓGICA PRINCIPAL ---
         function fetchAppointments(date) {
-            // Se já houver um listener ativo, cancela-o antes de criar um novo.
             if (unsubscribe) {
                 unsubscribe();
             }
@@ -145,6 +153,8 @@
             startOfDay.setHours(0, 0, 0, 0);
             const endOfDay = new Date(date);
             endOfDay.setHours(23, 59, 59, 999);
+            
+            console.log(`A procurar agendamentos entre ${startOfDay.toISOString()} e ${endOfDay.toISOString()}`);
 
             const appointmentsCollectionPath = `artifacts/${appId}/public/data/appointments`;
             const q = query(
@@ -155,18 +165,29 @@
 
             unsubscribe = onSnapshot(q, (snapshot) => {
                 loadingMessage.style.display = 'none';
+                console.log(`Snapshot recebido com ${snapshot.size} documentos.`);
                 if (snapshot.empty) {
                     appointmentsList.innerHTML = '<p class="text-center text-gray-400 py-16">Nenhum agendamento para esta data.</p>';
                     return;
                 }
 
                 appointmentsList.innerHTML = '';
-                const docs = snapshot.docs.sort((a, b) => a.data().startTime.toDate() - b.data().startTime.toDate());
+                const docs = snapshot.docs.sort((a, b) => {
+                    const timeA = a.data().startTime?.toDate() || 0;
+                    const timeB = b.data().startTime?.toDate() || 0;
+                    return timeA - timeB;
+                });
                 
                 docs.forEach(doc => {
-                    const appointment = doc.data();
-                    const appointmentCard = createAppointmentCard(doc.id, appointment);
-                    appointmentsList.appendChild(appointmentCard);
+                    try {
+                        const appointment = doc.data();
+                        console.log("A processar agendamento:", doc.id, appointment);
+                        const appointmentCard = createAppointmentCard(doc.id, appointment);
+                        appointmentsList.appendChild(appointmentCard);
+                    } catch (error) {
+                        console.error(`Erro ao processar o cartão para o agendamento ${doc.id}:`, error);
+                        // Opcional: mostrar um cartão de erro na UI
+                    }
                 });
             }, (error) => {
                 console.error("Erro ao buscar agendamentos:", error);
@@ -174,40 +195,40 @@
             });
         }
 
-        /**
-         * Cria o cartão HTML para um agendamento.
-         * @param {string} id - O ID do documento do agendamento.
-         * @param {object} data - Os dados do agendamento.
-         * @returns {HTMLElement} O elemento do cartão.
-         */
         function createAppointmentCard(id, data) {
             const card = document.createElement('div');
             card.className = 'appointment-card bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col md:flex-row gap-4';
             
-            const startTime = data.startTime.toDate();
-            const endTime = data.endTime.toDate();
+            // Código mais seguro para lidar com dados potencialmente em falta
+            const startTime = data.startTime?.toDate();
+            const endTime = data.endTime?.toDate();
             const timeOptions = { hour: '2-digit', minute: '2-digit' };
 
-            const servicesHtml = data.services.map(s => `<li class="text-gray-400">${s.name}</li>`).join('');
+            const startTimeStr = startTime ? startTime.toLocaleTimeString('pt-BR', timeOptions) : 'N/A';
+            const endTimeStr = endTime ? endTime.toLocaleTimeString('pt-BR', timeOptions) : 'N/A';
+
+            const servicesHtml = data.services?.map(s => `<li class="text-gray-400">${s.name || 'Serviço sem nome'}</li>`).join('') || '<li>Nenhum serviço listado</li>';
+            
+            const customer = data.customer || {};
 
             card.innerHTML = `
                 <!-- Coluna do Horário -->
                 <div class="flex-shrink-0 w-full md:w-48 text-center md:text-left border-b md:border-b-0 md:border-r border-gray-700 pb-4 md:pb-0 md:pr-4">
-                    <p class="text-2xl font-bold text-indigo-300">${startTime.toLocaleTimeString('pt-BR', timeOptions)}</p>
-                    <p class="text-sm text-gray-400">até ${endTime.toLocaleTimeString('pt-BR', timeOptions)}</p>
-                    <p class="text-sm text-gray-400 mt-2">Duração: ${data.totalDuration} min</p>
-                    <div class="mt-2 inline-block bg-green-500 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">${data.status}</div>
+                    <p class="text-2xl font-bold text-indigo-300">${startTimeStr}</p>
+                    <p class="text-sm text-gray-400">até ${endTimeStr}</p>
+                    <p class="text-sm text-gray-400 mt-2">Duração: ${data.totalDuration || 'N/A'} min</p>
+                    <div class="mt-2 inline-block bg-green-500 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">${data.status || 'N/A'}</div>
                 </div>
 
                 <!-- Coluna de Detalhes -->
                 <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <h3 class="font-bold text-lg text-white">${data.customer.name}</h3>
-                        <p class="text-gray-400">${data.customer.phone}</p>
+                        <h3 class="font-bold text-lg text-white">${customer.name || 'Cliente não informado'}</h3>
+                        <p class="text-gray-400">${formatPhoneNumberForDisplay(customer.phone)}</p>
                         <div class="mt-2">
                             <p class="font-semibold text-gray-300">Veículo:</p>
-                            <p class="text-gray-400">${data.customer.vehicleMake} ${data.customer.vehicleModel} (${data.customer.vehicleYear})</p>
-                            <p class="text-gray-400">Placa: ${data.customer.vehiclePlate}</p>
+                            <p class="text-gray-400">${customer.vehicleMake || ''} ${customer.vehicleModel || ''} (${customer.vehicleYear || 'N/A'})</p>
+                            <p class="text-gray-400">Placa: ${customer.vehiclePlate || 'N/A'}</p>
                         </div>
                     </div>
                     <div>
@@ -236,7 +257,6 @@
                 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        // Inicializa o calendário
                         flatpickr(datePickerInput, {
                             dateFormat: "Y-m-d",
                             defaultDate: "today",
@@ -246,7 +266,6 @@
                                 }
                             },
                         });
-                        // Busca os agendamentos para o dia de hoje
                         fetchAppointments(new Date());
                     } else {
                         signInAnonymously(auth);
