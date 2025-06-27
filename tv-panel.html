@@ -87,7 +87,6 @@
 };
         // *******************************************************************
         
-        // CORREÇÃO: Envolve toda a lógica num listener que espera o DOM estar pronto.
         document.addEventListener('DOMContentLoaded', () => {
             const appId = firebaseConfig.projectId;
             let db;
@@ -127,12 +126,12 @@
                     collection(db, appointmentsCollectionPath),
                     where("startTime", ">=", startOfDay),
                     where("startTime", "<=", endOfDay),
-                    where("status", "==", "Agendado") // Filtra apenas agendamentos ativos
+                    where("status", "==", "Agendado")
                 );
 
                 unsubscribe = onSnapshot(q, (snapshot) => {
                     loadingMessage.style.display = 'none';
-                    appointmentsViewport.innerHTML = ''; // Limpa a área
+                    appointmentsViewport.innerHTML = '';
                     
                     if (snapshot.empty) {
                         appointmentsViewport.innerHTML = '<p class="text-center text-gray-400 text-3xl py-24">Nenhum agendamento ativo para esta data.</p>';
@@ -186,9 +185,8 @@
 
             function createAppointmentCard(data) {
                 const card = document.createElement('div');
-                card.className = `appointment-card status-agendado bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col min-h-0`;
+                card.className = `appointment-card status-agendado bg-gray-800 p-4 rounded-lg shadow-lg flex items-center gap-4`;
                 
-                // Extração de dados segura com optional chaining e valores padrão
                 const startTime = data.startTime?.toDate();
                 const customer = data.customer || {};
                 const vehicle = customer.vehicle || {};
@@ -200,41 +198,26 @@
                 const customerName = customer.name || 'Cliente não informado';
                 const vehicleMake = vehicle.make || 'Marca N/A';
                 const vehicleModel = vehicle.model || 'Modelo N/A';
-                const vehicleYear = vehicle.year || 'N/A';
                 const vehiclePlate = vehicle.plate || 'N/A';
 
-                // CORREÇÃO: Lógica mais robusta para garantir que a lista de serviços é exibida
-                let servicesHtml = '<li>Nenhum serviço listado.</li>';
+                let servicesStr = 'Nenhum serviço listado.';
                 if (Array.isArray(services) && services.length > 0) {
-                    servicesHtml = services.map(s => {
-                        // Verifica se 's' é um objeto e tem a propriedade 'name'
-                        if (typeof s === 'object' && s !== null && s.name) {
-                            return `<li>${s.name}</li>`;
-                        }
-                        return '<li>Serviço mal formatado</li>'; // Fallback para dados inesperados
-                    }).join('');
+                    servicesStr = services.map(s => s.name || 'Serviço').join(', ');
                 }
 
                 card.innerHTML = `
-                    <div class="flex-shrink-0 flex items-start gap-4 border-b border-gray-700 pb-2 mb-2">
-                        <p class="text-3xl font-bold text-indigo-300 w-24 text-center">${startTimeStr}</p>
-                        <div class="flex-grow min-w-0">
-                            <h3 class="text-xl font-bold text-white truncate">${customerName}</h3>
-                            <p class="text-lg text-gray-300 truncate">${vehicleMake} ${vehicleModel}</p>
-                            <p class="text-md text-gray-400">Ano: ${vehicleYear} | Placa: <span class="font-mono tracking-wider">${vehiclePlate}</span></p>
-                        </div>
+                    <div class="flex-shrink-0 w-28 text-center">
+                        <p class="text-4xl font-bold text-indigo-300">${startTimeStr}</p>
                     </div>
-                    <div class="flex-grow overflow-y-auto no-scrollbar">
-                        <h4 class="font-semibold text-gray-300">Serviços:</h4>
-                        <ul class="list-disc list-inside text-gray-400 text-lg space-y-1 mt-1">
-                            ${servicesHtml}
-                        </ul>
+                    <div class="flex-grow min-w-0 border-l-2 border-gray-700 pl-4">
+                        <h3 class="text-2xl font-bold text-white truncate">${customerName}</h3>
+                        <p class="text-xl text-indigo-200 truncate" title="${servicesStr}">${servicesStr}</p>
+                        <p class="text-lg text-gray-300 mt-1">${vehicleMake} ${vehicleModel} - <span class="font-mono tracking-wider">${vehiclePlate}</span></p>
                     </div>
                 `;
                 return card;
             }
 
-            // --- INICIALIZAÇÃO DA APLICAÇÃO ---
             function main() {
                 try {
                     if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("COLE_SUA")) {
