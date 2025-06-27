@@ -139,7 +139,6 @@
 
                 const docs = snapshot.docs.sort((a, b) => (a.data().startTime?.toDate() || 0) - (b.data().startTime?.toDate() || 0));
                 
-                // Divide os agendamentos em páginas de 6
                 const pageSize = 6;
                 const pages = [];
                 for (let i = 0; i < docs.length; i += pageSize) {
@@ -168,20 +167,18 @@
                 appointmentsViewport.appendChild(pageElement);
             });
 
-            // Mostra a primeira página
             let currentPageIndex = 0;
             const pageElements = document.querySelectorAll('.page');
             if (pageElements.length > 0) {
                 pageElements[currentPageIndex].classList.remove('opacity-0');
             }
 
-            // Inicia a rotação se houver mais de uma página
             if (pages.length > 1) {
                 rotationInterval = setInterval(() => {
-                    pageElements[currentPageIndex].classList.add('opacity-0'); // Esconde a página atual
-                    currentPageIndex = (currentPageIndex + 1) % pages.length; // Move para a próxima
-                    pageElements[currentPageIndex].classList.remove('opacity-0'); // Mostra a nova página
-                }, 15000); // Rotação a cada 15 segundos
+                    pageElements[currentPageIndex].classList.add('opacity-0');
+                    currentPageIndex = (currentPageIndex + 1) % pages.length;
+                    pageElements[currentPageIndex].classList.remove('opacity-0');
+                }, 15000);
             }
         }
 
@@ -189,20 +186,33 @@
             const card = document.createElement('div');
             card.className = `appointment-card status-agendado bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col min-h-0`;
             
+            // Extração de dados segura com optional chaining e valores padrão
             const startTime = data.startTime?.toDate();
             const customer = data.customer || {};
             const vehicle = customer.vehicle || {};
+            const services = data.services || [];
+
             const timeOptions = { hour: '2-digit', minute: '2-digit' };
             const startTimeStr = startTime ? startTime.toLocaleTimeString('pt-BR', timeOptions) : 'N/A';
-            const servicesHtml = data.services?.map(s => `<li>${s.name || 'Serviço sem nome'}</li>`).join('') || '<li>Nenhum serviço listado</li>';
+            
+            const customerName = customer.name || 'Cliente não informado';
+            const vehicleMake = vehicle.make || 'Marca N/A';
+            const vehicleModel = vehicle.model || 'Modelo N/A';
+            const vehicleYear = vehicle.year || 'N/A';
+            const vehiclePlate = vehicle.plate || 'N/A';
+
+            let servicesHtml = '<li>Nenhum serviço listado</li>';
+            if (services.length > 0) {
+                servicesHtml = services.map(s => `<li>${s.name || 'Serviço sem nome'}</li>`).join('');
+            }
 
             card.innerHTML = `
                 <div class="flex-shrink-0 flex items-start gap-4 border-b border-gray-700 pb-2 mb-2">
                     <p class="text-3xl font-bold text-indigo-300 w-24 text-center">${startTimeStr}</p>
                     <div class="flex-grow min-w-0">
-                        <h3 class="text-xl font-bold text-white truncate">${customer.name || 'Cliente não informado'}</h3>
-                        <p class="text-lg text-gray-300 truncate">${vehicle.make || 'Marca N/A'} ${vehicle.model || 'Modelo N/A'}</p>
-                        <p class="text-md text-gray-400">Ano: ${vehicle.year || 'N/A'} | Placa: <span class="font-mono tracking-wider">${vehicle.plate || 'N/A'}</span></p>
+                        <h3 class="text-xl font-bold text-white truncate">${customerName}</h3>
+                        <p class="text-lg text-gray-300 truncate">${vehicleMake} ${vehicleModel}</p>
+                        <p class="text-md text-gray-400">Ano: ${vehicleYear} | Placa: <span class="font-mono tracking-wider">${vehiclePlate}</span></p>
                     </div>
                 </div>
                 <div class="flex-grow overflow-y-auto no-scrollbar">
