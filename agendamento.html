@@ -246,7 +246,7 @@
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- CONFIGURAÇÃO INICIAL ---
         const firebaseConfig = {
@@ -314,25 +314,18 @@
             else if (stepNumber === 4) confirmationSection.style.display = 'block';
         }
 
-        /**
-         * Formata o número de telefone enquanto o usuário digita.
-         */
         function formatPhoneNumber(event) {
             const input = event.target;
-            let value = input.value.replace(/\D/g, ''); // Remove tudo que não é dígito
-            value = value.substring(0, 11); // Limita a 11 dígitos
+            let value = input.value.replace(/\D/g, '');
+            value = value.substring(0, 11);
 
             if (value.length > 10) {
-                // (XX) XXXXX-XXXX
                 value = `(${value.substring(0, 2)}) ${value.substring(2, 7)}-${value.substring(7, 11)}`;
             } else if (value.length > 6) {
-                // (XX) XXXX-XXXX
                 value = `(${value.substring(0, 2)}) ${value.substring(2, 6)}-${value.substring(6)}`;
             } else if (value.length > 2) {
-                // (XX) XXXXX
                 value = `(${value.substring(0, 2)}) ${value.substring(2)}`;
             } else if (value.length > 0) {
-                // (XX
                 value = `(${value}`;
             }
             input.value = value;
@@ -348,24 +341,47 @@
                 "disable": [
                     function(date) { return (date.getDay() === 0); }
                 ],
-                onChange: function(selectedDates) {
+                onChange: async function(selectedDates) { // Tornou-se assíncrono
                     if (selectedDates.length > 0) {
-                        generateAvailableSlots(selectedDates[0]);
+                        await generateAvailableSlots(selectedDates[0]); // Aguarda a geração
                     }
                 },
             });
         }
 
-        function generateAvailableSlots(date) {
+        async function generateAvailableSlots(date) {
             timeSlotsContainer.innerHTML = '';
             const placeholder = document.createElement('p');
             placeholder.className = 'text-gray-400';
-            placeholder.textContent = "Calculando horários...";
+            placeholder.textContent = "Verificando agenda...";
             timeSlotsContainer.appendChild(placeholder);
             
             selectedTimeSlot = null;
             goToCustomerInfoButton.disabled = true;
+
+            // 1. Buscar agendamentos existentes para o dia
+            const startOfDay = new Date(date);
+            startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(date);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            const appointmentsCollectionPath = `artifacts/${appId}/public/data/appointments`;
+            const q = query(
+                collection(db, appointmentsCollectionPath),
+                where("startTime", ">=", startOfDay),
+                where("startTime", "<=", endOfDay)
+            );
             
+            const querySnapshot = await getDocs(q);
+            const busySlots = querySnapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    start: data.startTime.toDate(),
+                    end: data.endTime.toDate()
+                };
+            });
+
+            // 2. Gerar slots potenciais e verificar conflitos
             const dayOfWeek = date.getDay();
             const serviceDuration = totalDuration;
             let availableSlots = [];
@@ -379,14 +395,22 @@
                         const slotStart = new Date(date);
                         slotStart.setHours(hour, minute, 0, 0);
                         const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
+                        
                         const endHour = slotEnd.getHours();
                         const endMinute = slotEnd.getMinutes();
                         
-                        let fitsInWindow = (hour < 12 && (endHour < 12 || (endHour === 12 && endMinute === 0))) ||
-                                           (hour >= 13 && (endHour < 17 || (endHour === 17 && endMinute === 0)));
-                        
+                        const fitsInWindow = (hour < 12 && (endHour < 12 || (endHour === 12 && endMinute === 0))) ||
+                                             (hour >= 13 && (endHour < 17 || (endHour === 17 && endMinute === 0)));
+
                         if (fitsInWindow) {
-                            availableSlots.push(slotStart);
+                            // Verifica se há sobreposição com horários ocupados
+                            const isOverlapping = busySlots.some(busySlot => 
+                                (slotStart < busySlot.end && slotEnd > busySlot.start)
+                            );
+
+                            if (!isOverlapping) {
+                                availableSlots.push(slotStart);
+                            }
                         }
                     }
                 }
@@ -417,7 +441,7 @@
         }
 
         async function saveAppointment(event) {
-            event.preventDefault(); // Previne o recarregamento da página pelo formulário
+            event.preventDefault();
             if (!selectedTimeSlot || selectedServices.size === 0) {
                 alert("Erro: Dados do agendamento não encontrados.");
                 return;
@@ -428,14 +452,13 @@
 
             const customerData = {
                 name: document.getElementById('customerName').value,
-                phone: document.getElementById('customerPhone').value.replace(/\D/g, ''), // Salva apenas os dígitos
-                vehicleMake: document.getElementById('vehicleMake').value.toUpperCase(), // Salva em maiúsculas
-                vehicleModel: document.getElementById('vehicleModel').value.toUpperCase(), // Salva em maiúsculas
+                phone: document.getElementById('customerPhone').value.replace(/\D/g, ''),
+                vehicleMake: document.getElementById('vehicleMake').value.toUpperCase(),
+                vehicleModel: document.getElementById('vehicleModel').value.toUpperCase(),
                 vehicleYear: document.getElementById('vehicleYear').value,
-                vehiclePlate: document.getElementById('vehiclePlate').value.toUpperCase(), // Salva em maiúsculas
+                vehiclePlate: document.getElementById('vehiclePlate').value.toUpperCase(),
             };
 
-            // Validação simples
             for (const key in customerData) {
                 if (!customerData[key]) {
                     alert(`Por favor, preencha o campo: ${key}`);
