@@ -291,7 +291,7 @@
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firestore.js";
+        import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, where, getDocs, setDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- LÓGICA DE ATUALIZAÇÃO DA PWA ---
         let newWorker;
@@ -311,7 +311,7 @@
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(reg => {
+                navigator.serviceWorker.register('./sw.js').then(reg => {
                     reg.addEventListener('updatefound', () => {
                         newWorker = reg.installing;
                         newWorker.addEventListener('statechange', () => {
@@ -342,7 +342,8 @@
   messagingSenderId: "632260839620",
   appId: "1:632260839620:web:a8a5bc4da9b69f8cfa6191"
 };
-        // *******************************************************************
+        
+        const VAPID_PUBLIC_KEY = "BBYYAwUJ5dAVQPbzARM95HobLuDruO1pV1KH6VMd_j1AaURnDi5CHmSPvbPpuv90CsYQ36cJZZppGJvxmrZ4XMg";
         
         const appId = firebaseConfig.projectId;
         let db, auth;
@@ -373,6 +374,8 @@
         const removeVehicleButton = document.getElementById('removeVehicleButton');
         const newVehicleSection = document.getElementById('new-vehicle-section');
         const saveNewVehicleButton = document.getElementById('saveNewVehicleButton');
+        const enableNotificationsButton = document.getElementById('enable-notifications-button');
+        const notificationStatus = document.getElementById('notification-status');
         
         let selectedServices = new Map();
         let totalDuration = 0;
@@ -427,7 +430,7 @@
                 const parsedData = JSON.parse(data);
                 customerNameInput.value = parsedData.name || '';
                 customerPhoneInput.value = parsedData.phone || '';
-                if (customerPhoneInput.value) { // Formata o telefone carregado
+                if (customerPhoneInput.value) {
                     formatPhoneNumber({target: customerPhoneInput});
                 }
                 savedVehicles = parsedData.vehicles || [];
@@ -499,6 +502,53 @@
             if (confirm(`Tem a certeza de que pretende remover o veículo ${vehicleToRemove.make} ${vehicleToRemove.model}?`)) {
                 savedVehicles.splice(selectedIndex, 1);
                 populateVehicleSelect();
+            }
+        }
+
+        // --- LÓGICA DE NOTIFICAÇÕES PUSH ---
+        async function subscribeToNotifications() {
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                notificationStatus.textContent = "Notificações não são suportadas neste navegador.";
+                return;
+            }
+
+            if (Notification.permission === 'granted') {
+                notificationStatus.textContent = "Lembretes já estão ativados!";
+                return;
+            }
+
+            if (Notification.permission === 'denied') {
+                notificationStatus.textContent = "Permissão para notificações bloqueada. Altere nas configurações do seu navegador.";
+                return;
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    notificationStatus.textContent = "A ativar lembretes...";
+                    const registration = await navigator.serviceWorker.ready;
+                    const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: VAPID_PUBLIC_KEY
+                    });
+                    
+                    const phone = customerPhoneInput.value.replace(/\D/g, '');
+                    if (!phone) {
+                        notificationStatus.textContent = "Número de telefone não encontrado para guardar a subscrição.";
+                        return;
+                    }
+
+                    // Guarda a subscrição no Firestore
+                    await setDoc(doc(db, "pushSubscriptions", phone), JSON.parse(JSON.stringify(subscription)));
+                    
+                    notificationStatus.textContent = "Lembretes ativados com sucesso!";
+                    enableNotificationsButton.style.display = 'none';
+                } else {
+                    notificationStatus.textContent = "Permissão para notificações não concedida.";
+                }
+            } catch (error) {
+                console.error("Erro ao subscrever para notificações:", error);
+                notificationStatus.textContent = "Ocorreu um erro ao ativar os lembretes.";
             }
         }
 
@@ -622,7 +672,7 @@
                  return;
             }
 
-            saveDataToStorage(); // Salva os dados do cliente e a lista de veículos localmente
+            saveDataToStorage();
 
             const servicesData = Array.from(selectedServices.values()).map(s => ({ id: s.id, name: s.name, duration: s.duration }));
 
@@ -639,7 +689,6 @@
             try {
                 const appointmentsCollectionPath = `artifacts/${appId}/public/data/appointments`;
                 await addDoc(collection(db, appointmentsCollectionPath), appointmentData);
-                console.log("Agendamento salvo com sucesso!");
                 
                 displayConfirmation(appointmentData);
                 goToStep(4);
@@ -680,8 +729,6 @@
                 </div>
             `;
         }
-
-        // --- FUNÇÕES DE INICIALIZAÇÃO ---
         
         function fetchServices() {
             const servicesCollectionPath = `artifacts/${appId}/public/data/services`;
@@ -770,6 +817,7 @@
             vehicleSelect.addEventListener('change', handleVehicleSelectChange);
             saveNewVehicleButton.addEventListener('click', handleAddNewVehicle);
             removeVehicleButton.addEventListener('click', handleRemoveVehicle);
+            enableNotificationsButton.addEventListener('click', subscribeToNotifications);
         }
 
         function main() {
@@ -788,10 +836,8 @@
                 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        console.log("Utilizador autenticado, a carregar serviços.");
                         fetchServices();
                     } else {
-                        console.log("Nenhum utilizador, a entrar anonimamente.");
                         signInAnonymously(auth);
                     }
                 });
@@ -801,7 +847,6 @@
             }
         }
 
-        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
         main();
 
     </script>
