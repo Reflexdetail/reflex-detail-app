@@ -108,24 +108,24 @@
         <div id="steps" class="w-full max-w-2xl mx-auto mb-8">
              <div class="flex items-center justify-center">
                 <div id="step-1" class="step active flex items-center text-indigo-400 relative">
-                    <div class="rounded-full h-12 w-12 border-2 border-indigo-400 flex items-center justify-center">
+                    <div class="rounded-full h-12 w-12 border-2 border-indigo-400 flex items-center justify-center transition-all">
                         <span class="text-xl font-bold">1</span>
                     </div>
-                    <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-indigo-400">Serviços</div>
+                    <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-indigo-400 transition-all">Serviços</div>
                 </div>
-                <div id="step-1-2-line" class="step-line flex-auto border-t-2 border-gray-600"></div>
+                <div id="step-1-2-line" class="step-line flex-auto border-t-2 border-gray-600 transition-all"></div>
                 <div id="step-2" class="step flex items-center text-gray-500 relative">
-                    <div class="rounded-full h-12 w-12 border-2 border-gray-600 flex items-center justify-center">
+                    <div class="rounded-full h-12 w-12 border-2 border-gray-600 flex items-center justify-center transition-all">
                         <span class="text-xl font-bold">2</span>
                     </div>
-                     <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-gray-500">Horário</div>
+                     <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-gray-500 transition-all">Horário</div>
                 </div>
-                 <div id="step-2-3-line" class="step-line flex-auto border-t-2 border-gray-600"></div>
+                 <div id="step-2-3-line" class="step-line flex-auto border-t-2 border-gray-600 transition-all"></div>
                 <div id="step-3" class="step flex items-center text-gray-500 relative">
-                    <div class="rounded-full h-12 w-12 border-2 border-gray-600 flex items-center justify-center">
+                    <div class="rounded-full h-12 w-12 border-2 border-gray-600 flex items-center justify-center transition-all">
                          <span class="text-xl font-bold">3</span>
                     </div>
-                     <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-gray-500">Confirmação</div>
+                     <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-gray-500 transition-all">Confirmação</div>
                 </div>
             </div>
         </div>
@@ -172,6 +172,23 @@
                 </div>
             </div>
 
+            <!-- ETAPA 3: CONFIRMAÇÃO -->
+            <div id="confirmation-section" style="display: none;">
+                <div class="text-center">
+                    <svg class="mx-auto h-16 w-16 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <h2 class="mt-4 text-2xl font-bold text-white">Agendamento Confirmado!</h2>
+                    <p class="mt-2 text-gray-400">Seu horário foi reservado com sucesso. Obrigado por escolher a Reflex Detail!</p>
+                    
+                    <div id="confirmation-summary" class="mt-6 text-left bg-gray-900 p-4 rounded-lg max-w-md mx-auto">
+                        <!-- Resumo do agendamento será inserido aqui -->
+                    </div>
+
+                    <button id="newAppointmentButton" class="mt-8 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
+                        Fazer Novo Agendamento
+                    </button>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -180,7 +197,7 @@
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- CONFIGURAÇÃO INICIAL ---
         const firebaseConfig = {
@@ -199,6 +216,7 @@
         // --- ELEMENTOS DO DOM ---
         const servicesSection = document.getElementById('services-section');
         const scheduleSection = document.getElementById('schedule-section');
+        const confirmationSection = document.getElementById('confirmation-section');
         const serviceListContainer = document.getElementById('serviceList');
         const loadingMessage = document.getElementById('loadingMessage');
         const summaryDiv = document.getElementById('summary');
@@ -207,34 +225,41 @@
         const backToServicesButton = document.getElementById('backToServicesButton');
         const calendarContainer = document.getElementById('calendar-container');
         const timeSlotsContainer = document.getElementById('time-slots-container');
-        const timeSlotsPlaceholder = document.getElementById('time-slots-placeholder');
         const confirmAppointmentButton = document.getElementById('confirmAppointmentButton');
+        const newAppointmentButton = document.getElementById('newAppointmentButton');
+        const confirmationSummary = document.getElementById('confirmation-summary');
         
         let selectedServices = new Map();
         let totalDuration = 0;
-        let selectedTimeSlot = null; // Variável para guardar o horário selecionado
+        let selectedTimeSlot = null;
 
         // --- FUNÇÕES DE NAVEGAÇÃO E UI ---
 
         function goToStep(stepNumber) {
-            document.querySelectorAll('.step').forEach(el => el.classList.remove('active', 'text-indigo-400'));
-            document.querySelectorAll('.step > div:first-child').forEach(el => el.classList.remove('border-indigo-400'));
-            document.querySelectorAll('.step-line').forEach(el => el.classList.remove('border-indigo-400'));
+            document.querySelectorAll('.step, .step-line').forEach(el => {
+                el.classList.remove('active', 'text-indigo-400', 'border-indigo-400');
+                el.classList.add('text-gray-500', 'border-gray-600');
+            });
             
-            const activeStep = document.getElementById(`step-${stepNumber}`);
-            activeStep.classList.add('active', 'text-indigo-400');
-            activeStep.querySelector('div:first-child').classList.add('border-indigo-400');
-            
-            if (stepNumber > 1) {
-                document.getElementById(`step-1-2-line`).classList.add('border-indigo-400');
+            for (let i = 1; i <= stepNumber; i++) {
+                const step = document.getElementById(`step-${i}`);
+                step.classList.add('active', 'text-indigo-400');
+                step.querySelector('div:first-child').classList.add('border-indigo-400');
+                if (i > 1) {
+                    document.getElementById(`step-${i-1}-${i}-line`).classList.add('border-indigo-400');
+                }
             }
+
+            servicesSection.style.display = 'none';
+            scheduleSection.style.display = 'none';
+            confirmationSection.style.display = 'none';
 
             if (stepNumber === 1) {
                 servicesSection.style.display = 'block';
-                scheduleSection.style.display = 'none';
             } else if (stepNumber === 2) {
-                servicesSection.style.display = 'none';
                 scheduleSection.style.display = 'block';
+            } else if (stepNumber === 3) {
+                confirmationSection.style.display = 'block';
             }
         }
 
@@ -246,12 +271,9 @@
                 minDate: "today",
                 dateFormat: "Y-m-d",
                 "disable": [
-                    function(date) {
-                        // Desabilita Domingos (dia 0)
-                        return (date.getDay() === 0); 
-                    }
+                    function(date) { return (date.getDay() === 0); }
                 ],
-                onChange: function(selectedDates, dateStr, instance) {
+                onChange: function(selectedDates) {
                     if (selectedDates.length > 0) {
                         generateAvailableSlots(selectedDates[0]);
                     }
@@ -260,29 +282,20 @@
         }
 
         function generateAvailableSlots(date) {
-            timeSlotsContainer.innerHTML = ''; // Limpa horários antigos
+            timeSlotsContainer.innerHTML = '';
             const placeholder = document.createElement('p');
-            placeholder.id = 'time-slots-placeholder';
             placeholder.className = 'text-gray-400';
             placeholder.textContent = "Calculando horários...";
             timeSlotsContainer.appendChild(placeholder);
             
-            selectedTimeSlot = null; // Reseta a seleção de horário
-            confirmAppointmentButton.disabled = true; // Desabilita o botão de confirmação
+            selectedTimeSlot = null;
+            confirmAppointmentButton.disabled = true;
             
             const dayOfWeek = date.getDay();
             const serviceDuration = totalDuration;
             let availableSlots = [];
 
-            const workIntervals = [
-                { start: 8, end: 12 },
-                { start: 13, end: 17 }
-            ];
-
-            if (dayOfWeek === 6) { // Sábado
-                workIntervals.pop();
-            }
-
+            const workIntervals = (dayOfWeek === 6) ? [{ start: 8, end: 12 }] : [{ start: 8, end: 12 }, { start: 13, end: 17 }];
             const slotIncrement = 15;
 
             workIntervals.forEach(interval => {
@@ -290,18 +303,12 @@
                     for (let minute = 0; minute < 60; minute += slotIncrement) {
                         const slotStart = new Date(date);
                         slotStart.setHours(hour, minute, 0, 0);
-
                         const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
-                        
                         const endHour = slotEnd.getHours();
                         const endMinute = slotEnd.getMinutes();
                         
-                        let fitsInWindow = false;
-                        if (hour < 12 && (endHour < 12 || (endHour === 12 && endMinute === 0))) {
-                           fitsInWindow = true;
-                        } else if (hour >= 13 && (endHour < 17 || (endHour === 17 && endMinute === 0))) {
-                           fitsInWindow = true;
-                        }
+                        let fitsInWindow = (hour < 12 && (endHour < 12 || (endHour === 12 && endMinute === 0))) ||
+                                           (hour >= 13 && (endHour < 17 || (endHour === 17 && endMinute === 0)));
                         
                         if (fitsInWindow) {
                             availableSlots.push(slotStart);
@@ -310,32 +317,20 @@
                 }
             });
 
-            placeholder.remove(); // Remove a mensagem "Calculando..."
+            placeholder.remove();
 
             if (availableSlots.length > 0) {
                  availableSlots.forEach(slot => {
                     const timeButton = document.createElement('button');
                     timeButton.className = "time-slot w-full text-center p-2 rounded-md transition-all";
                     timeButton.textContent = slot.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                    
-                    // CORREÇÃO: Adiciona o evento de clique para selecionar o horário
                     timeButton.addEventListener('click', () => {
-                        // Remove a classe 'selected' de qualquer outro botão
                         const currentlySelected = timeSlotsContainer.querySelector('.selected');
-                        if (currentlySelected) {
-                            currentlySelected.classList.remove('selected');
-                        }
-                        
-                        // Adiciona a classe 'selected' ao botão clicado
+                        if (currentlySelected) currentlySelected.classList.remove('selected');
                         timeButton.classList.add('selected');
-                        
-                        // Guarda o valor do horário selecionado
                         selectedTimeSlot = slot;
-                        
-                        // Habilita o botão de confirmação
                         confirmAppointmentButton.disabled = false;
                     });
-
                     timeSlotsContainer.appendChild(timeButton);
                 });
             } else {
@@ -346,6 +341,65 @@
             }
         }
 
+        async function saveAppointment() {
+            if (!selectedTimeSlot || selectedServices.size === 0) {
+                alert("Por favor, selecione os serviços e um horário antes de confirmar.");
+                return;
+            }
+
+            confirmAppointmentButton.disabled = true;
+            confirmAppointmentButton.textContent = "Salvando...";
+
+            const servicesData = Array.from(selectedServices.values()).map(s => ({ id: s.id, name: s.name, duration: s.duration }));
+
+            const appointmentData = {
+                services: servicesData,
+                totalDuration: totalDuration,
+                startTime: selectedTimeSlot,
+                endTime: new Date(selectedTimeSlot.getTime() + totalDuration * 60000),
+                status: 'Agendado',
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                const appointmentsCollectionPath = `artifacts/${appId}/public/data/appointments`;
+                await addDoc(collection(db, appointmentsCollectionPath), appointmentData);
+                console.log("Agendamento salvo com sucesso!");
+                
+                displayConfirmation(appointmentData);
+                goToStep(3);
+
+            } catch (error) {
+                console.error("Erro ao salvar agendamento:", error);
+                alert("Ocorreu um erro ao salvar seu agendamento. Tente novamente.");
+                confirmAppointmentButton.disabled = false;
+                confirmAppointmentButton.textContent = "Confirmar Agendamento";
+            }
+        }
+
+        function displayConfirmation(data) {
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const timeOptions = { hour: '2-digit', minute: '2-digit' };
+
+            let servicesHtml = data.services.map(s => `<p class="text-gray-300">${s.name}</p>`).join('');
+
+            confirmationSummary.innerHTML = `
+                <div class="space-y-2">
+                    <div>
+                        <h4 class="font-semibold text-indigo-300">Data:</h4>
+                        <p class="text-gray-300">${data.startTime.toLocaleDateString('pt-BR', dateOptions)}</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-indigo-300">Horário:</h4>
+                        <p class="text-gray-300">${data.startTime.toLocaleTimeString('pt-BR', timeOptions)}</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-indigo-300">Serviços:</h4>
+                        ${servicesHtml}
+                    </div>
+                </div>
+            `;
+        }
 
         // --- FUNÇÕES DE MANIPULAÇÃO DE DADOS ---
         
@@ -360,11 +414,8 @@
                 db = getFirestore(app);
                 
                 onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        fetchServices();
-                    } else {
-                        signInAnonymously(auth);
-                    }
+                    if (user) fetchServices();
+                    else signInAnonymously(auth);
                 });
             } catch (error) {
                 console.error("Erro ao inicializar o Firebase:", error);
@@ -435,6 +486,11 @@
         // --- INICIALIZAÇÃO E LISTENERS ---
         nextStepButton.addEventListener('click', () => goToStep(2));
         backToServicesButton.addEventListener('click', () => goToStep(1));
+        confirmAppointmentButton.addEventListener('click', saveAppointment);
+        newAppointmentButton.addEventListener('click', () => {
+            // Recarrega a página para um novo agendamento
+            window.location.reload();
+        });
         
         main();
         initializeCalendar();
