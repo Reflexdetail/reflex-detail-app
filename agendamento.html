@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agendamento - Reflex Detail</title>
     
+    <!-- Configurações PWA -->
+    <meta name="theme-color" content="#4f46e5"/>
+    <link rel="manifest" href="manifest.json">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -263,6 +267,20 @@
     </div>
 
     <!-- Scripts -->
+    <script>
+      // Registo do Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('Service Worker: registado com sucesso!', registration);
+            })
+            .catch(error => {
+              console.log('Service Worker: falha no registo.', error);
+            });
+        });
+      }
+    </script>
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
