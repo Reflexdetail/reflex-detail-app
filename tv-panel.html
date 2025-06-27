@@ -24,25 +24,19 @@
         .font-brand {
             font-family: 'Orbitron', sans-serif;
         }
-        .appointment-card.status-agendado {
+        .appointment-card {
             border-left: 6px solid #4f46e5; /* Indigo */
+            transition: transform 0.3s ease-in-out;
         }
-        .appointment-card.status-cancelado,
-        .appointment-card.status-cancelado-pelo-cliente {
-            border-left: 6px solid #ef4444; /* Red */
-            opacity: 0.6;
+        .appointment-card:hover {
+            transform: translateY(-5px);
         }
-        /* Esconde a barra de rolagem mas mantém a funcionalidade */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
+        .page {
+            transition: opacity 0.75s ease-in-out;
         }
     </style>
 </head>
-<body class="h-full flex flex-col">
+<body class="h-full flex flex-col overflow-hidden">
 
     <!-- Container Principal -->
     <div class="container mx-auto p-4 md:p-8 flex flex-col flex-grow h-full">
@@ -60,10 +54,10 @@
             </div>
         </header>
 
-        <!-- Lista de Agendamentos -->
-        <main id="appointments-list" class="space-y-6 flex-grow overflow-y-auto no-scrollbar pb-8">
+        <!-- Lista de Agendamentos (Viewport para as páginas) -->
+        <main id="appointments-viewport" class="flex-grow relative">
             <p id="loading-message" class="text-center text-gray-400 text-2xl py-24">A carregar agendamentos...</p>
-            <!-- Os cartões de agendamento serão inseridos aqui -->
+            <!-- As páginas de agendamentos serão inseridas aqui -->
         </main>
     </div>
 
@@ -89,9 +83,10 @@
         let db;
         let unsubscribe;
         let currentDate = new Date();
+        let rotationInterval = null;
 
         // --- ELEMENTOS DO DOM ---
-        const appointmentsList = document.getElementById('appointments-list');
+        const appointmentsViewport = document.getElementById('appointments-viewport');
         const loadingMessage = document.getElementById('loading-message');
         const currentDateDisplay = document.getElementById('current-date-display');
         const prevDayBtn = document.getElementById('prev-day-btn');
@@ -99,27 +94,17 @@
 
         // --- FUNÇÕES DE FORMATAÇÃO ---
         function formatDisplayDate(date) {
-            return date.toLocaleDateString('pt-BR', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-        }
-
-        function formatPhoneNumberForDisplay(phone) {
-            if (!phone || typeof phone !== 'string' || phone.length < 10) return phone || 'N/A';
-            const ddd = phone.substring(0, 2);
-            return phone.length === 11 ? `(${ddd}) ${phone.substring(2, 7)}-${phone.substring(7)}` : `(${ddd}) ${phone.substring(2, 6)}-${phone.substring(6)}`;
+            return date.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         }
 
         // --- LÓGICA PRINCIPAL ---
         function fetchAppointments(date) {
             if (unsubscribe) unsubscribe();
+            if (rotationInterval) clearInterval(rotationInterval);
 
             loadingMessage.style.display = 'block';
-            appointmentsList.innerHTML = '';
-            appointmentsList.appendChild(loadingMessage);
+            appointmentsViewport.innerHTML = '';
+            appointmentsViewport.appendChild(loadingMessage);
             currentDateDisplay.textContent = formatDisplayDate(date);
 
             const startOfDay = new Date(date);
@@ -128,74 +113,94 @@
             endOfDay.setHours(23, 59, 59, 999);
 
             const appointmentsCollectionPath = `artifacts/${appId}/public/data/appointments`;
-            const q = query(collection(db, appointmentsCollectionPath), where("startTime", ">=", startOfDay), where("startTime", "<=", endOfDay));
+            const q = query(
+                collection(db, appointmentsCollectionPath),
+                where("startTime", ">=", startOfDay),
+                where("startTime", "<=", endOfDay),
+                where("status", "==", "Agendado") // Filtra apenas agendamentos ativos
+            );
 
             unsubscribe = onSnapshot(q, (snapshot) => {
                 loadingMessage.style.display = 'none';
+                appointmentsViewport.innerHTML = ''; // Limpa a área
+                
                 if (snapshot.empty) {
-                    appointmentsList.innerHTML = '<p class="text-center text-gray-400 text-3xl py-24">Nenhum agendamento para esta data.</p>';
+                    appointmentsViewport.innerHTML = '<p class="text-center text-gray-400 text-3xl py-24">Nenhum agendamento ativo para esta data.</p>';
                     return;
                 }
 
-                appointmentsList.innerHTML = '';
                 const docs = snapshot.docs.sort((a, b) => (a.data().startTime?.toDate() || 0) - (b.data().startTime?.toDate() || 0));
                 
-                docs.forEach(doc => {
-                    const appointmentCard = createAppointmentCard(doc.data());
-                    appointmentsList.appendChild(appointmentCard);
-                });
+                // Divide os agendamentos em páginas de 6
+                const pageSize = 6;
+                const pages = [];
+                for (let i = 0; i < docs.length; i += pageSize) {
+                    pages.push(docs.slice(i, i + pageSize));
+                }
+
+                renderPages(pages);
+
             }, (error) => {
                 console.error("Erro ao buscar agendamentos:", error);
                 loadingMessage.textContent = "Erro ao carregar os dados.";
             });
         }
 
+        function renderPages(pages) {
+            pages.forEach((pageDocs, pageIndex) => {
+                const pageElement = document.createElement('div');
+                pageElement.className = 'page absolute inset-0 grid grid-cols-1 lg:grid-cols-2 grid-rows-3 gap-4 transition-opacity duration-700 opacity-0';
+                pageElement.id = `page-${pageIndex}`;
+                
+                pageDocs.forEach(doc => {
+                    const appointmentCard = createAppointmentCard(doc.data());
+                    pageElement.appendChild(appointmentCard);
+                });
+
+                appointmentsViewport.appendChild(pageElement);
+            });
+
+            // Mostra a primeira página
+            let currentPageIndex = 0;
+            const pageElements = document.querySelectorAll('.page');
+            if (pageElements.length > 0) {
+                pageElements[currentPageIndex].classList.remove('opacity-0');
+            }
+
+            // Inicia a rotação se houver mais de uma página
+            if (pages.length > 1) {
+                rotationInterval = setInterval(() => {
+                    pageElements[currentPageIndex].classList.add('opacity-0'); // Esconde a página atual
+                    currentPageIndex = (currentPageIndex + 1) % pages.length; // Move para a próxima
+                    pageElements[currentPageIndex].classList.remove('opacity-0'); // Mostra a nova página
+                }, 15000); // Rotação a cada 15 segundos
+            }
+        }
+
         function createAppointmentCard(data) {
             const card = document.createElement('div');
-            const status = data.status || 'Agendado';
-            const statusClass = status.toLowerCase().replace(/\s/g, '-');
-            card.className = `appointment-card status-${statusClass} bg-gray-800 p-6 rounded-lg shadow-2xl flex flex-col lg:flex-row gap-6`;
+            card.className = `appointment-card status-agendado bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col`;
             
             const startTime = data.startTime?.toDate();
-            const endTime = data.endTime?.toDate();
-            const timeOptions = { hour: '2-digit', minute: '2-digit' };
-
-            const startTimeStr = startTime ? startTime.toLocaleTimeString('pt-BR', timeOptions) : 'N/A';
-            const endTimeStr = endTime ? endTime.toLocaleTimeString('pt-BR', timeOptions) : 'N/A';
-            const servicesHtml = data.services?.map(s => `<li class="text-xl text-gray-300">${s.name || 'Serviço sem nome'}</li>`).join('') || '<li>Nenhum serviço listado</li>';
             const customer = data.customer || {};
             const vehicle = customer.vehicle || {};
-
-            const statusColors = {
-                'Agendado': 'bg-green-500',
-                'Cancelado': 'bg-red-500',
-                'Cancelado-pelo-Cliente': 'bg-red-600'
-            };
+            const timeOptions = { hour: '2-digit', minute: '2-digit' };
+            const startTimeStr = startTime ? startTime.toLocaleTimeString('pt-BR', timeOptions) : 'N/A';
+            const servicesHtml = data.services?.map(s => `<li class="truncate">${s.name || 'Serviço sem nome'}</li>`).join('') || '<li>Nenhum serviço listado</li>';
 
             card.innerHTML = `
-                <!-- Coluna do Horário -->
-                <div class="flex-shrink-0 w-full lg:w-64 text-center lg:text-left border-b-2 lg:border-b-0 lg:border-r-2 border-gray-700 pb-6 lg:pb-0 lg:pr-6">
-                    <p class="text-5xl font-bold text-indigo-300">${startTimeStr}</p>
-                    <p class="text-xl text-gray-400 mt-1">até ${endTimeStr}</p>
-                    <div class="mt-4 inline-block ${statusColors[statusClass] || 'bg-gray-500'} text-white text-lg font-semibold px-4 py-1 rounded-full">${status}</div>
+                <div class="flex items-center gap-4 border-b border-gray-700 pb-2 mb-2">
+                    <p class="text-3xl font-bold text-indigo-300">${startTimeStr}</p>
+                    <div class="flex-grow">
+                        <h3 class="text-xl font-bold text-white truncate">${customer.name || 'Cliente não informado'}</h3>
+                        <p class="text-lg text-gray-400">${vehicle.make || ''} ${vehicle.model || ''}</p>
+                    </div>
                 </div>
-
-                <!-- Coluna de Detalhes -->
-                <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <h3 class="text-3xl font-bold text-white">${customer.name || 'Cliente não informado'}</h3>
-                        <p class="text-2xl text-gray-400">${formatPhoneNumberForDisplay(customer.phone)}</p>
-                        <div class="mt-4">
-                            <p class="text-2xl font-semibold text-gray-200">${vehicle.make || ''} ${vehicle.model || ''} (${vehicle.year || 'N/A'})</p>
-                            <p class="text-xl text-gray-400">Placa: ${vehicle.plate || 'N/A'}</p>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold text-white">Serviços Contratados</h3>
-                        <ul class="list-disc list-inside mt-2 space-y-1">
-                            ${servicesHtml}
-                        </ul>
-                    </div>
+                <div>
+                    <h4 class="font-semibold text-gray-300">Serviços:</h4>
+                    <ul class="list-disc list-inside text-gray-400 text-lg space-y-1 mt-1">
+                        ${servicesHtml}
+                    </ul>
                 </div>
             `;
             return card;
