@@ -10,7 +10,7 @@
     
     <!-- Flatpickr (Biblioteca de Calendário) CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <!-- Flatpickr JS (CORREÇÃO: Carregado aqui) -->
+    <!-- Flatpickr JS -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     
     <!-- Fontes do Google -->
@@ -59,7 +59,7 @@
         .flatpickr-day:hover {
             background: #374151;
         }
-        .flatpickr-day.selected {
+        .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
             background: #4f46e5;
             border-color: #4f46e5;
         }
@@ -78,6 +78,7 @@
         .time-slot {
             background-color: #374151;
             border: 2px solid transparent;
+            cursor: pointer;
         }
         .time-slot:hover {
             border-color: #6366f1;
@@ -85,6 +86,11 @@
         .time-slot.selected {
             background-color: #4f46e5;
             color: white;
+            border-color: #a5b4fc;
+        }
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
         }
     </style>
 </head>
@@ -147,14 +153,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                         <h3 class="text-lg font-semibold mb-2">Selecione uma data:</h3>
-                        <!-- O calendário será inserido aqui pelo JS -->
                         <div id="calendar-container"></div>
                     </div>
                     <div>
                         <h3 class="text-lg font-semibold mb-2">Horários disponíveis:</h3>
                         <div id="time-slots-container" class="max-h-64 overflow-y-auto space-y-2 pr-2">
                              <p id="time-slots-placeholder" class="text-gray-400">Por favor, selecione uma data no calendário.</p>
-                             <!-- Horários disponíveis aparecerão aqui -->
                         </div>
                     </div>
                 </div>
@@ -177,7 +181,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        // CORREÇÃO: A importação do flatpickr foi removida daqui
 
         // --- CONFIGURAÇÃO INICIAL ---
         const firebaseConfig = {
@@ -205,9 +208,11 @@
         const calendarContainer = document.getElementById('calendar-container');
         const timeSlotsContainer = document.getElementById('time-slots-container');
         const timeSlotsPlaceholder = document.getElementById('time-slots-placeholder');
+        const confirmAppointmentButton = document.getElementById('confirmAppointmentButton');
         
         let selectedServices = new Map();
         let totalDuration = 0;
+        let selectedTimeSlot = null; // Variável para guardar o horário selecionado
 
         // --- FUNÇÕES DE NAVEGAÇÃO E UI ---
 
@@ -236,7 +241,6 @@
         // --- LÓGICA DE AGENDAMENTO ---
 
         function initializeCalendar() {
-            // A função flatpickr agora está disponível globalmente
             flatpickr(calendarContainer, {
                 inline: true,
                 minDate: "today",
@@ -256,26 +260,30 @@
         }
 
         function generateAvailableSlots(date) {
-            timeSlotsPlaceholder.textContent = "Calculando horários...";
             timeSlotsContainer.innerHTML = ''; // Limpa horários antigos
+            const placeholder = document.createElement('p');
+            placeholder.id = 'time-slots-placeholder';
+            placeholder.className = 'text-gray-400';
+            placeholder.textContent = "Calculando horários...";
+            timeSlotsContainer.appendChild(placeholder);
             
-            const dayOfWeek = date.getDay(); // 0=Domingo, 1=Segunda, ..., 6=Sábado
+            selectedTimeSlot = null; // Reseta a seleção de horário
+            confirmAppointmentButton.disabled = true; // Desabilita o botão de confirmação
+            
+            const dayOfWeek = date.getDay();
             const serviceDuration = totalDuration;
             let availableSlots = [];
 
-            // Define os horários de trabalho
             const workIntervals = [
-                { start: 8, end: 12 },  // Manhã
-                { start: 13, end: 17 } // Tarde
+                { start: 8, end: 12 },
+                { start: 13, end: 17 }
             ];
 
-            // Sábado só tem expediente de manhã
             if (dayOfWeek === 6) { // Sábado
-                workIntervals.pop(); // Remove o período da tarde
+                workIntervals.pop();
             }
 
-            // Lógica para gerar slots a cada 15 minutos
-            const slotIncrement = 15; // minutos
+            const slotIncrement = 15;
 
             workIntervals.forEach(interval => {
                 for (let hour = interval.start; hour < interval.end; hour++) {
@@ -285,22 +293,15 @@
 
                         const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
                         
-                        // Verifica se o serviço termina dentro do mesmo intervalo de trabalho
                         const endHour = slotEnd.getHours();
                         const endMinute = slotEnd.getMinutes();
                         
                         let fitsInWindow = false;
-                        if (hour < 12 && endHour < 12) { // Manhã
+                        if (hour < 12 && (endHour < 12 || (endHour === 12 && endMinute === 0))) {
                            fitsInWindow = true;
-                        } else if (hour < 12 && endHour === 12 && endMinute === 0) { // Termina exatamente ao meio-dia
-                           fitsInWindow = true;
-                        } else if (hour >= 13 && endHour < 17) { // Tarde
-                           fitsInWindow = true;
-                        } else if (hour >= 13 && endHour === 17 && endMinute === 0) { // Termina exatamente às 17h
+                        } else if (hour >= 13 && (endHour < 17 || (endHour === 17 && endMinute === 0))) {
                            fitsInWindow = true;
                         }
-
-                        // TODO: Adicionar lógica para verificar conflitos com agendamentos existentes
                         
                         if (fitsInWindow) {
                             availableSlots.push(slotStart);
@@ -309,16 +310,39 @@
                 }
             });
 
+            placeholder.remove(); // Remove a mensagem "Calculando..."
+
             if (availableSlots.length > 0) {
                  availableSlots.forEach(slot => {
                     const timeButton = document.createElement('button');
                     timeButton.className = "time-slot w-full text-center p-2 rounded-md transition-all";
                     timeButton.textContent = slot.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    
+                    // CORREÇÃO: Adiciona o evento de clique para selecionar o horário
+                    timeButton.addEventListener('click', () => {
+                        // Remove a classe 'selected' de qualquer outro botão
+                        const currentlySelected = timeSlotsContainer.querySelector('.selected');
+                        if (currentlySelected) {
+                            currentlySelected.classList.remove('selected');
+                        }
+                        
+                        // Adiciona a classe 'selected' ao botão clicado
+                        timeButton.classList.add('selected');
+                        
+                        // Guarda o valor do horário selecionado
+                        selectedTimeSlot = slot;
+                        
+                        // Habilita o botão de confirmação
+                        confirmAppointmentButton.disabled = false;
+                    });
+
                     timeSlotsContainer.appendChild(timeButton);
                 });
             } else {
-                timeSlotsPlaceholder.textContent = "Nenhum horário disponível para a duração deste serviço.";
-                timeSlotsContainer.appendChild(timeSlotsPlaceholder);
+                const noSlotsMessage = document.createElement('p');
+                noSlotsMessage.className = 'text-gray-400';
+                noSlotsMessage.textContent = "Nenhum horário disponível para a duração deste serviço.";
+                timeSlotsContainer.appendChild(noSlotsMessage);
             }
         }
 
