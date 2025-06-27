@@ -8,6 +8,11 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Flatpickr (Biblioteca de Calendário) CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- Flatpickr JS (CORREÇÃO: Carregado aqui) -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    
     <!-- Fontes do Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,11 +42,49 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #6366f1; /* bg-indigo-500 */
         }
-        /* Estilo para item selecionado */
         .service-item.selected {
             border-color: #6366f1;
-            background-color: #312e81; /* indigo-900 */
+            background-color: #312e81;
             box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+        }
+        /* Estilo para o calendário Flatpickr */
+        .flatpickr-calendar {
+            background: #1f2937;
+            border-radius: 0.5rem;
+            border: 1px solid #374151;
+        }
+        .flatpickr-day, .flatpickr-weekday {
+            color: #d1d5db;
+        }
+        .flatpickr-day:hover {
+            background: #374151;
+        }
+        .flatpickr-day.selected {
+            background: #4f46e5;
+            border-color: #4f46e5;
+        }
+        .flatpickr-day.today {
+            border-color: #a5b4fc;
+        }
+        .flatpickr-day.disabled {
+            color: #4b5563;
+        }
+        .flatpickr-month, .flatpickr-current-month .flatpickr-monthDropdown-months {
+            color: #e5e7eb;
+        }
+        span.arrowUp, span.arrowDown {
+            border-bottom-color: #e5e7eb;
+        }
+        .time-slot {
+            background-color: #374151;
+            border: 2px solid transparent;
+        }
+        .time-slot:hover {
+            border-color: #6366f1;
+        }
+        .time-slot.selected {
+            background-color: #4f46e5;
+            color: white;
         }
     </style>
 </head>
@@ -50,31 +93,30 @@
     <!-- Container Principal -->
     <div class="container mx-auto p-4 md:p-8 max-w-4xl">
 
-        <!-- Cabeçalho -->
         <header class="mb-8 text-center">
             <h1 class="text-4xl md:text-5xl font-brand text-indigo-400">Reflex Detail</h1>
             <p class="text-xl text-gray-400 mt-2">Faça seu Agendamento</p>
         </header>
 
         <!-- Etapas do Agendamento -->
-        <div class="w-full max-w-2xl mx-auto mb-8">
+        <div id="steps" class="w-full max-w-2xl mx-auto mb-8">
              <div class="flex items-center justify-center">
-                <div class="flex items-center text-indigo-400 relative">
-                    <div class="rounded-full transition duration-500 ease-in-out h-12 w-12 border-2 border-indigo-400 flex items-center justify-center">
+                <div id="step-1" class="step active flex items-center text-indigo-400 relative">
+                    <div class="rounded-full h-12 w-12 border-2 border-indigo-400 flex items-center justify-center">
                         <span class="text-xl font-bold">1</span>
                     </div>
                     <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-indigo-400">Serviços</div>
                 </div>
-                <div class="flex-auto border-t-2 transition duration-500 ease-in-out border-gray-600"></div>
-                <div class="flex items-center text-gray-500 relative">
-                    <div class="rounded-full transition duration-500 ease-in-out h-12 w-12 border-2 border-gray-600 flex items-center justify-center">
+                <div id="step-1-2-line" class="step-line flex-auto border-t-2 border-gray-600"></div>
+                <div id="step-2" class="step flex items-center text-gray-500 relative">
+                    <div class="rounded-full h-12 w-12 border-2 border-gray-600 flex items-center justify-center">
                         <span class="text-xl font-bold">2</span>
                     </div>
                      <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-gray-500">Horário</div>
                 </div>
-                 <div class="flex-auto border-t-2 transition duration-500 ease-in-out border-gray-600"></div>
-                <div class="flex items-center text-gray-500 relative">
-                    <div class="rounded-full transition duration-500 ease-in-out h-12 w-12 border-2 border-gray-600 flex items-center justify-center">
+                 <div id="step-2-3-line" class="step-line flex-auto border-t-2 border-gray-600"></div>
+                <div id="step-3" class="step flex items-center text-gray-500 relative">
+                    <div class="rounded-full h-12 w-12 border-2 border-gray-600 flex items-center justify-center">
                          <span class="text-xl font-bold">3</span>
                     </div>
                      <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-gray-500">Confirmação</div>
@@ -84,33 +126,60 @@
 
         <!-- Seção Principal -->
         <main class="bg-gray-800 p-6 rounded-lg shadow-2xl">
-            <h2 class="text-2xl font-bold mb-4">1. Selecione os serviços desejados</h2>
-            <div id="serviceList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Serviços carregados do Firebase aparecerão aqui -->
-                <p id="loadingMessage" class="text-center text-gray-400 py-8 md:col-span-2">Carregando serviços disponíveis...</p>
-            </div>
             
-            <!-- Resumo e Próximo Passo -->
-            <div id="summary" class="mt-8 pt-4 border-t border-gray-700 text-right" style="display: none;">
-                <p class="text-lg">Tempo total estimado: <span id="totalDuration" class="font-bold text-indigo-300">0</span> minutos</p>
-                <button id="nextStepButton" class="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
-                    Escolher Horário &rarr;
-                </button>
+            <!-- ETAPA 1: SELEÇÃO DE SERVIÇOS -->
+            <div id="services-section">
+                <h2 class="text-2xl font-bold mb-4">1. Selecione os serviços desejados</h2>
+                <div id="serviceList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <p id="loadingMessage" class="text-center text-gray-400 py-8 md:col-span-2">Carregando serviços disponíveis...</p>
+                </div>
+                <div id="summary" class="mt-8 pt-4 border-t border-gray-700 text-right" style="display: none;">
+                    <p class="text-lg">Tempo total estimado: <span id="totalDuration" class="font-bold text-indigo-300">0</span> minutos</p>
+                    <button id="nextStepButton" class="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
+                        Escolher Horário &rarr;
+                    </button>
+                </div>
             </div>
-        </main>
 
+            <!-- ETAPA 2: ESCOLHA DE HORÁRIO -->
+            <div id="schedule-section" style="display: none;">
+                <h2 class="text-2xl font-bold mb-4">2. Escolha a data e o horário</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-lg font-semibold mb-2">Selecione uma data:</h3>
+                        <!-- O calendário será inserido aqui pelo JS -->
+                        <div id="calendar-container"></div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-2">Horários disponíveis:</h3>
+                        <div id="time-slots-container" class="max-h-64 overflow-y-auto space-y-2 pr-2">
+                             <p id="time-slots-placeholder" class="text-gray-400">Por favor, selecione uma data no calendário.</p>
+                             <!-- Horários disponíveis aparecerão aqui -->
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 pt-4 border-t border-gray-700 flex justify-between items-center">
+                     <button id="backToServicesButton" class="inline-flex items-center px-6 py-3 border border-gray-600 text-base font-medium rounded-md shadow-sm text-white bg-gray-700 hover:bg-gray-600 focus:outline-none">
+                        &larr; Voltar
+                    </button>
+                    <button id="confirmAppointmentButton" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none" disabled>
+                        Confirmar Agendamento
+                    </button>
+                </div>
+            </div>
+
+        </main>
     </div>
 
-    <!-- Scripts do Firebase e da Aplicação -->
+    <!-- Scripts -->
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // Importação da autenticação adicionada
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // CORREÇÃO: A importação do flatpickr foi removida daqui
 
         // --- CONFIGURAÇÃO INICIAL ---
-        // A mesma configuração que você usou no painel admin.
         const firebaseConfig = {
   apiKey: "AIzaSyDx7BM9aUohmsgT0v-2crV_miMLC58ngZk",
   authDomain: "reflex-detail-app.firebaseapp.com",
@@ -122,21 +191,141 @@
         // *******************************************************************
         
         const appId = firebaseConfig.projectId;
-        let db;
-        let auth;
+        let db, auth;
 
         // --- ELEMENTOS DO DOM ---
+        const servicesSection = document.getElementById('services-section');
+        const scheduleSection = document.getElementById('schedule-section');
         const serviceListContainer = document.getElementById('serviceList');
         const loadingMessage = document.getElementById('loadingMessage');
         const summaryDiv = document.getElementById('summary');
         const totalDurationSpan = document.getElementById('totalDuration');
+        const nextStepButton = document.getElementById('nextStepButton');
+        const backToServicesButton = document.getElementById('backToServicesButton');
+        const calendarContainer = document.getElementById('calendar-container');
+        const timeSlotsContainer = document.getElementById('time-slots-container');
+        const timeSlotsPlaceholder = document.getElementById('time-slots-placeholder');
         
-        let selectedServices = new Map(); // Usaremos um Map para guardar os serviços selecionados
+        let selectedServices = new Map();
+        let totalDuration = 0;
 
-        /**
-         * Função principal que inicializa o Firebase e busca os serviços.
-         */
-        async function main() {
+        // --- FUNÇÕES DE NAVEGAÇÃO E UI ---
+
+        function goToStep(stepNumber) {
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('active', 'text-indigo-400'));
+            document.querySelectorAll('.step > div:first-child').forEach(el => el.classList.remove('border-indigo-400'));
+            document.querySelectorAll('.step-line').forEach(el => el.classList.remove('border-indigo-400'));
+            
+            const activeStep = document.getElementById(`step-${stepNumber}`);
+            activeStep.classList.add('active', 'text-indigo-400');
+            activeStep.querySelector('div:first-child').classList.add('border-indigo-400');
+            
+            if (stepNumber > 1) {
+                document.getElementById(`step-1-2-line`).classList.add('border-indigo-400');
+            }
+
+            if (stepNumber === 1) {
+                servicesSection.style.display = 'block';
+                scheduleSection.style.display = 'none';
+            } else if (stepNumber === 2) {
+                servicesSection.style.display = 'none';
+                scheduleSection.style.display = 'block';
+            }
+        }
+
+        // --- LÓGICA DE AGENDAMENTO ---
+
+        function initializeCalendar() {
+            // A função flatpickr agora está disponível globalmente
+            flatpickr(calendarContainer, {
+                inline: true,
+                minDate: "today",
+                dateFormat: "Y-m-d",
+                "disable": [
+                    function(date) {
+                        // Desabilita Domingos (dia 0)
+                        return (date.getDay() === 0); 
+                    }
+                ],
+                onChange: function(selectedDates, dateStr, instance) {
+                    if (selectedDates.length > 0) {
+                        generateAvailableSlots(selectedDates[0]);
+                    }
+                },
+            });
+        }
+
+        function generateAvailableSlots(date) {
+            timeSlotsPlaceholder.textContent = "Calculando horários...";
+            timeSlotsContainer.innerHTML = ''; // Limpa horários antigos
+            
+            const dayOfWeek = date.getDay(); // 0=Domingo, 1=Segunda, ..., 6=Sábado
+            const serviceDuration = totalDuration;
+            let availableSlots = [];
+
+            // Define os horários de trabalho
+            const workIntervals = [
+                { start: 8, end: 12 },  // Manhã
+                { start: 13, end: 17 } // Tarde
+            ];
+
+            // Sábado só tem expediente de manhã
+            if (dayOfWeek === 6) { // Sábado
+                workIntervals.pop(); // Remove o período da tarde
+            }
+
+            // Lógica para gerar slots a cada 15 minutos
+            const slotIncrement = 15; // minutos
+
+            workIntervals.forEach(interval => {
+                for (let hour = interval.start; hour < interval.end; hour++) {
+                    for (let minute = 0; minute < 60; minute += slotIncrement) {
+                        const slotStart = new Date(date);
+                        slotStart.setHours(hour, minute, 0, 0);
+
+                        const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
+                        
+                        // Verifica se o serviço termina dentro do mesmo intervalo de trabalho
+                        const endHour = slotEnd.getHours();
+                        const endMinute = slotEnd.getMinutes();
+                        
+                        let fitsInWindow = false;
+                        if (hour < 12 && endHour < 12) { // Manhã
+                           fitsInWindow = true;
+                        } else if (hour < 12 && endHour === 12 && endMinute === 0) { // Termina exatamente ao meio-dia
+                           fitsInWindow = true;
+                        } else if (hour >= 13 && endHour < 17) { // Tarde
+                           fitsInWindow = true;
+                        } else if (hour >= 13 && endHour === 17 && endMinute === 0) { // Termina exatamente às 17h
+                           fitsInWindow = true;
+                        }
+
+                        // TODO: Adicionar lógica para verificar conflitos com agendamentos existentes
+                        
+                        if (fitsInWindow) {
+                            availableSlots.push(slotStart);
+                        }
+                    }
+                }
+            });
+
+            if (availableSlots.length > 0) {
+                 availableSlots.forEach(slot => {
+                    const timeButton = document.createElement('button');
+                    timeButton.className = "time-slot w-full text-center p-2 rounded-md transition-all";
+                    timeButton.textContent = slot.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    timeSlotsContainer.appendChild(timeButton);
+                });
+            } else {
+                timeSlotsPlaceholder.textContent = "Nenhum horário disponível para a duração deste serviço.";
+                timeSlotsContainer.appendChild(timeSlotsPlaceholder);
+            }
+        }
+
+
+        // --- FUNÇÕES DE MANIPULAÇÃO DE DADOS ---
+        
+        function main() {
             try {
                 if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes("COLE_SUA")) {
                     loadingMessage.innerHTML = `<p class="text-red-400 text-center col-span-2">Erro: A configuração do Firebase não foi preenchida.</p>`;
@@ -146,27 +335,19 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
                 
-                // Lógica de autenticação adicionada
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        // Usuário está logado (anonimamente), busca os serviços.
-                        console.log("Autenticado anonimamente. Buscando serviços...");
                         fetchServices();
                     } else {
-                        // Se não houver usuário, faz o login anônimo.
                         signInAnonymously(auth);
                     }
                 });
-
             } catch (error) {
                 console.error("Erro ao inicializar o Firebase:", error);
                 loadingMessage.innerHTML = `<p class="text-red-400 col-span-2">Erro de conexão com o banco de dados.</p>`;
             }
         }
 
-        /**
-         * Busca e exibe os serviços em tempo real do Firestore.
-         */
         function fetchServices() {
             const servicesCollectionPath = `artifacts/${appId}/public/data/services`;
             const q = query(collection(db, servicesCollectionPath));
@@ -179,48 +360,30 @@
                 }
 
                 serviceListContainer.innerHTML = '';
-                snapshot.forEach(doc => {
+                snapshot.docs.sort((a, b) => a.data().name.localeCompare(b.data().name)).forEach(doc => {
                     const service = { id: doc.id, ...doc.data() };
                     const serviceElement = createServiceElement(service);
                     serviceListContainer.appendChild(serviceElement);
                 });
-            }, (error) => {
-                console.error("Erro ao buscar serviços:", error);
-                serviceListContainer.innerHTML = `<p class="text-red-400 md:col-span-2">Não foi possível carregar os serviços.</p>`;
             });
         }
         
-        /**
-         * Cria o elemento HTML para um serviço individual.
-         * @param {object} service - O objeto de dados do serviço.
-         * @returns {HTMLElement} O elemento div do serviço.
-         */
         function createServiceElement(service) {
             const div = document.createElement('div');
-            // Adiciona a classe 'service-item' para manipulação
             div.className = 'service-item bg-gray-700 p-4 rounded-lg cursor-pointer border-2 border-transparent transition-all hover:border-indigo-500';
             div.setAttribute('data-id', service.id);
             div.setAttribute('data-duration', service.duration);
-
             div.innerHTML = `
                 <h3 class="font-bold text-lg text-indigo-300 pointer-events-none">${service.name}</h3>
                 <p class="text-sm text-gray-400 mt-1 pointer-events-none">${service.description}</p>
                 <p class="text-sm text-gray-300 mt-3 font-semibold pointer-events-none">Duração: ${service.duration} minutos</p>
             `;
-            
             div.addEventListener('click', () => toggleServiceSelection(div, service));
-            
             return div;
         }
 
-        /**
-         * Manipula a seleção e desseleção de um serviço.
-         * @param {HTMLElement} element - O elemento div do serviço que foi clicado.
-         * @param {object} service - O objeto de dados do serviço.
-         */
         function toggleServiceSelection(element, service) {
             const serviceId = service.id;
-            
             element.classList.toggle('selected');
             
             if (selectedServices.has(serviceId)) {
@@ -228,19 +391,14 @@
             } else {
                 selectedServices.set(serviceId, service);
             }
-            
             updateSummary();
         }
         
-        /**
-         * Atualiza o resumo de tempo total e visibilidade do sumário.
-         */
         function updateSummary() {
-            let totalDuration = 0;
+            totalDuration = 0;
             selectedServices.forEach(service => {
                 totalDuration += service.duration;
             });
-            
             totalDurationSpan.textContent = totalDuration;
             
             if (selectedServices.size > 0) {
@@ -250,8 +408,12 @@
             }
         }
 
-        // --- INICIALIZAÇÃO DA APLICAÇÃO ---
+        // --- INICIALIZAÇÃO E LISTENERS ---
+        nextStepButton.addEventListener('click', () => goToStep(2));
+        backToServicesButton.addEventListener('click', () => goToStep(1));
+        
         main();
+        initializeCalendar();
 
     </script>
 </body>
