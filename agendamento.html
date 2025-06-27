@@ -96,6 +96,10 @@
             cursor: not-allowed;
             opacity: 0.5;
         }
+        #update-banner {
+            transform: translateY(100%);
+            display: none;
+        }
     </style>
 </head>
 <body class="text-gray-200">
@@ -265,28 +269,21 @@
 
         </main>
     </div>
+    
+    <!-- Faixa de Atualização da PWA -->
+    <div id="update-banner" class="fixed bottom-0 left-0 right-0 bg-indigo-600 text-white p-4 text-center transition-transform duration-500" style="transform: translateY(100%);">
+        <span>Uma nova versão da aplicação está disponível.</span>
+        <button id="reload-button" class="ml-4 font-bold underline hover:text-indigo-200">Atualizar agora</button>
+    </div>
+
 
     <!-- Scripts -->
-    <script>
-      // Registo do Service Worker
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('Service Worker: registado com sucesso!', registration);
-            })
-            .catch(error => {
-              console.log('Service Worker: falha no registo.', error);
-            });
-        });
-      }
-    </script>
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+        
         // --- CONFIGURAÇÃO INICIAL ---
         const firebaseConfig = {
   apiKey: "AIzaSyDx7BM9aUohmsgT0v-2crV_miMLC58ngZk",
