@@ -189,17 +189,17 @@
                     </div>
                     <div>
                         <label for="customerPhone" class="block text-sm font-medium text-gray-300">Telefone (com DDD)</label>
-                        <input type="tel" id="customerPhone" name="customerPhone" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        <input type="tel" id="customerPhone" name="customerPhone" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" maxlength="15">
                     </div>
                     <h3 class="text-lg font-semibold pt-4 border-t border-gray-700">Dados do Veículo</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label for="vehicleMake" class="block text-sm font-medium text-gray-300">Marca</label>
-                            <input type="text" id="vehicleMake" name="vehicleMake" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="text" id="vehicleMake" name="vehicleMake" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" style="text-transform: uppercase;">
                         </div>
                         <div>
                             <label for="vehicleModel" class="block text-sm font-medium text-gray-300">Modelo</label>
-                            <input type="text" id="vehicleModel" name="vehicleModel" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="text" id="vehicleModel" name="vehicleModel" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" style="text-transform: uppercase;">
                         </div>
                         <div>
                             <label for="vehicleYear" class="block text-sm font-medium text-gray-300">Ano</label>
@@ -207,7 +207,7 @@
                         </div>
                         <div>
                             <label for="vehiclePlate" class="block text-sm font-medium text-gray-300">Placa</label>
-                            <input type="text" id="vehiclePlate" name="vehiclePlate" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <input type="text" id="vehiclePlate" name="vehiclePlate" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" style="text-transform: uppercase;">
                         </div>
                     </div>
                 </form>
@@ -314,6 +314,30 @@
             else if (stepNumber === 4) confirmationSection.style.display = 'block';
         }
 
+        /**
+         * Formata o número de telefone enquanto o usuário digita.
+         */
+        function formatPhoneNumber(event) {
+            const input = event.target;
+            let value = input.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+            value = value.substring(0, 11); // Limita a 11 dígitos
+
+            if (value.length > 10) {
+                // (XX) XXXXX-XXXX
+                value = `(${value.substring(0, 2)}) ${value.substring(2, 7)}-${value.substring(7, 11)}`;
+            } else if (value.length > 6) {
+                // (XX) XXXX-XXXX
+                value = `(${value.substring(0, 2)}) ${value.substring(2, 6)}-${value.substring(6)}`;
+            } else if (value.length > 2) {
+                // (XX) XXXXX
+                value = `(${value.substring(0, 2)}) ${value.substring(2)}`;
+            } else if (value.length > 0) {
+                // (XX
+                value = `(${value}`;
+            }
+            input.value = value;
+        }
+
         // --- LÓGICA DE AGENDAMENTO ---
 
         function initializeCalendar() {
@@ -404,11 +428,11 @@
 
             const customerData = {
                 name: document.getElementById('customerName').value,
-                phone: document.getElementById('customerPhone').value,
-                vehicleMake: document.getElementById('vehicleMake').value,
-                vehicleModel: document.getElementById('vehicleModel').value,
+                phone: document.getElementById('customerPhone').value.replace(/\D/g, ''), // Salva apenas os dígitos
+                vehicleMake: document.getElementById('vehicleMake').value.toUpperCase(), // Salva em maiúsculas
+                vehicleModel: document.getElementById('vehicleModel').value.toUpperCase(), // Salva em maiúsculas
                 vehicleYear: document.getElementById('vehicleYear').value,
-                vehiclePlate: document.getElementById('vehiclePlate').value,
+                vehiclePlate: document.getElementById('vehiclePlate').value.toUpperCase(), // Salva em maiúsculas
             };
 
             // Validação simples
@@ -569,6 +593,7 @@
         newAppointmentButton.addEventListener('click', () => {
             window.location.reload();
         });
+        document.getElementById('customerPhone').addEventListener('input', formatPhoneNumber);
         
         main();
         initializeCalendar();
