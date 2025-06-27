@@ -105,7 +105,7 @@
         </header>
 
         <!-- Etapas do Agendamento -->
-        <div id="steps" class="w-full max-w-2xl mx-auto mb-8">
+        <div id="steps" class="w-full max-w-3xl mx-auto mb-12">
              <div class="flex items-center justify-center">
                 <div id="step-1" class="step active flex items-center text-indigo-400 relative">
                     <div class="rounded-full h-12 w-12 border-2 border-indigo-400 flex items-center justify-center transition-all">
@@ -125,6 +125,13 @@
                     <div class="rounded-full h-12 w-12 border-2 border-gray-600 flex items-center justify-center transition-all">
                          <span class="text-xl font-bold">3</span>
                     </div>
+                     <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-gray-500 transition-all">Seus Dados</div>
+                </div>
+                <div id="step-3-4-line" class="step-line flex-auto border-t-2 border-gray-600 transition-all"></div>
+                <div id="step-4" class="step flex items-center text-gray-500 relative">
+                    <div class="rounded-full h-12 w-12 border-2 border-gray-600 flex items-center justify-center transition-all">
+                         <span class="text-xl font-bold">4</span>
+                    </div>
                      <div class="absolute top-0 -ml-10 text-center mt-16 w-32 text-xs font-medium uppercase text-gray-500 transition-all">Confirmação</div>
                 </div>
             </div>
@@ -141,7 +148,7 @@
                 </div>
                 <div id="summary" class="mt-8 pt-4 border-t border-gray-700 text-right" style="display: none;">
                     <p class="text-lg">Tempo total estimado: <span id="totalDuration" class="font-bold text-indigo-300">0</span> minutos</p>
-                    <button id="nextStepButton" class="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
+                    <button id="goToScheduleButton" class="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
                         Escolher Horário &rarr;
                     </button>
                 </div>
@@ -166,13 +173,55 @@
                      <button id="backToServicesButton" class="inline-flex items-center px-6 py-3 border border-gray-600 text-base font-medium rounded-md shadow-sm text-white bg-gray-700 hover:bg-gray-600 focus:outline-none">
                         &larr; Voltar
                     </button>
-                    <button id="confirmAppointmentButton" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none" disabled>
+                    <button id="goToCustomerInfoButton" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none" disabled>
+                        Preencher Dados &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- ETAPA 3: DADOS DO CLIENTE -->
+            <div id="customer-info-section" style="display: none;">
+                <h2 class="text-2xl font-bold mb-4">3. Preencha seus dados</h2>
+                <form id="customer-form" class="space-y-4">
+                    <div>
+                        <label for="customerName" class="block text-sm font-medium text-gray-300">Nome Completo</label>
+                        <input type="text" id="customerName" name="customerName" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="customerPhone" class="block text-sm font-medium text-gray-300">Telefone (com DDD)</label>
+                        <input type="tel" id="customerPhone" name="customerPhone" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <h3 class="text-lg font-semibold pt-4 border-t border-gray-700">Dados do Veículo</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="vehicleMake" class="block text-sm font-medium text-gray-300">Marca</label>
+                            <input type="text" id="vehicleMake" name="vehicleMake" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label for="vehicleModel" class="block text-sm font-medium text-gray-300">Modelo</label>
+                            <input type="text" id="vehicleModel" name="vehicleModel" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label for="vehicleYear" class="block text-sm font-medium text-gray-300">Ano</label>
+                            <input type="number" id="vehicleYear" name="vehicleYear" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label for="vehiclePlate" class="block text-sm font-medium text-gray-300">Placa</label>
+                            <input type="text" id="vehiclePlate" name="vehiclePlate" required class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                    </div>
+                </form>
+                 <div class="mt-8 pt-4 border-t border-gray-700 flex justify-between items-center">
+                     <button id="backToScheduleButton" class="inline-flex items-center px-6 py-3 border border-gray-600 text-base font-medium rounded-md shadow-sm text-white bg-gray-700 hover:bg-gray-600 focus:outline-none">
+                        &larr; Voltar
+                    </button>
+                    <button id="confirmAppointmentButton" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
                         Confirmar Agendamento
                     </button>
                 </div>
             </div>
 
-            <!-- ETAPA 3: CONFIRMAÇÃO -->
+            <!-- ETAPA 4: CONFIRMAÇÃO FINAL -->
             <div id="confirmation-section" style="display: none;">
                 <div class="text-center">
                     <svg class="mx-auto h-16 w-16 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -216,18 +265,22 @@
         // --- ELEMENTOS DO DOM ---
         const servicesSection = document.getElementById('services-section');
         const scheduleSection = document.getElementById('schedule-section');
+        const customerInfoSection = document.getElementById('customer-info-section');
         const confirmationSection = document.getElementById('confirmation-section');
         const serviceListContainer = document.getElementById('serviceList');
         const loadingMessage = document.getElementById('loadingMessage');
         const summaryDiv = document.getElementById('summary');
         const totalDurationSpan = document.getElementById('totalDuration');
-        const nextStepButton = document.getElementById('nextStepButton');
+        const goToScheduleButton = document.getElementById('goToScheduleButton');
         const backToServicesButton = document.getElementById('backToServicesButton');
+        const goToCustomerInfoButton = document.getElementById('goToCustomerInfoButton');
+        const backToScheduleButton = document.getElementById('backToScheduleButton');
         const calendarContainer = document.getElementById('calendar-container');
         const timeSlotsContainer = document.getElementById('time-slots-container');
         const confirmAppointmentButton = document.getElementById('confirmAppointmentButton');
         const newAppointmentButton = document.getElementById('newAppointmentButton');
         const confirmationSummary = document.getElementById('confirmation-summary');
+        const customerForm = document.getElementById('customer-form');
         
         let selectedServices = new Map();
         let totalDuration = 0;
@@ -252,15 +305,13 @@
 
             servicesSection.style.display = 'none';
             scheduleSection.style.display = 'none';
+            customerInfoSection.style.display = 'none';
             confirmationSection.style.display = 'none';
 
-            if (stepNumber === 1) {
-                servicesSection.style.display = 'block';
-            } else if (stepNumber === 2) {
-                scheduleSection.style.display = 'block';
-            } else if (stepNumber === 3) {
-                confirmationSection.style.display = 'block';
-            }
+            if (stepNumber === 1) servicesSection.style.display = 'block';
+            else if (stepNumber === 2) scheduleSection.style.display = 'block';
+            else if (stepNumber === 3) customerInfoSection.style.display = 'block';
+            else if (stepNumber === 4) confirmationSection.style.display = 'block';
         }
 
         // --- LÓGICA DE AGENDAMENTO ---
@@ -289,7 +340,7 @@
             timeSlotsContainer.appendChild(placeholder);
             
             selectedTimeSlot = null;
-            confirmAppointmentButton.disabled = true;
+            goToCustomerInfoButton.disabled = true;
             
             const dayOfWeek = date.getDay();
             const serviceDuration = totalDuration;
@@ -329,7 +380,7 @@
                         if (currentlySelected) currentlySelected.classList.remove('selected');
                         timeButton.classList.add('selected');
                         selectedTimeSlot = slot;
-                        confirmAppointmentButton.disabled = false;
+                        goToCustomerInfoButton.disabled = false;
                     });
                     timeSlotsContainer.appendChild(timeButton);
                 });
@@ -341,18 +392,39 @@
             }
         }
 
-        async function saveAppointment() {
+        async function saveAppointment(event) {
+            event.preventDefault(); // Previne o recarregamento da página pelo formulário
             if (!selectedTimeSlot || selectedServices.size === 0) {
-                alert("Por favor, selecione os serviços e um horário antes de confirmar.");
+                alert("Erro: Dados do agendamento não encontrados.");
                 return;
             }
 
             confirmAppointmentButton.disabled = true;
             confirmAppointmentButton.textContent = "Salvando...";
 
+            const customerData = {
+                name: document.getElementById('customerName').value,
+                phone: document.getElementById('customerPhone').value,
+                vehicleMake: document.getElementById('vehicleMake').value,
+                vehicleModel: document.getElementById('vehicleModel').value,
+                vehicleYear: document.getElementById('vehicleYear').value,
+                vehiclePlate: document.getElementById('vehiclePlate').value,
+            };
+
+            // Validação simples
+            for (const key in customerData) {
+                if (!customerData[key]) {
+                    alert(`Por favor, preencha o campo: ${key}`);
+                    confirmAppointmentButton.disabled = false;
+                    confirmAppointmentButton.textContent = "Confirmar Agendamento";
+                    return;
+                }
+            }
+
             const servicesData = Array.from(selectedServices.values()).map(s => ({ id: s.id, name: s.name, duration: s.duration }));
 
             const appointmentData = {
+                customer: customerData,
                 services: servicesData,
                 totalDuration: totalDuration,
                 startTime: selectedTimeSlot,
@@ -367,7 +439,7 @@
                 console.log("Agendamento salvo com sucesso!");
                 
                 displayConfirmation(appointmentData);
-                goToStep(3);
+                goToStep(4);
 
             } catch (error) {
                 console.error("Erro ao salvar agendamento:", error);
@@ -384,14 +456,18 @@
             let servicesHtml = data.services.map(s => `<p class="text-gray-300">${s.name}</p>`).join('');
 
             confirmationSummary.innerHTML = `
-                <div class="space-y-2">
+                <div class="space-y-3">
                     <div>
-                        <h4 class="font-semibold text-indigo-300">Data:</h4>
-                        <p class="text-gray-300">${data.startTime.toLocaleDateString('pt-BR', dateOptions)}</p>
+                        <h4 class="font-semibold text-indigo-300">Cliente:</h4>
+                        <p class="text-gray-300">${data.customer.name}</p>
+                    </div>
+                     <div>
+                        <h4 class="font-semibold text-indigo-300">Veículo:</h4>
+                        <p class="text-gray-300">${data.customer.vehicleMake} ${data.customer.vehicleModel} (${data.customer.vehiclePlate})</p>
                     </div>
                     <div>
-                        <h4 class="font-semibold text-indigo-300">Horário:</h4>
-                        <p class="text-gray-300">${data.startTime.toLocaleTimeString('pt-BR', timeOptions)}</p>
+                        <h4 class="font-semibold text-indigo-300">Data e Hora:</h4>
+                        <p class="text-gray-300">${data.startTime.toLocaleDateString('pt-BR', dateOptions)} às ${data.startTime.toLocaleTimeString('pt-BR', timeOptions)}</p>
                     </div>
                     <div>
                         <h4 class="font-semibold text-indigo-300">Serviços:</h4>
@@ -484,11 +560,13 @@
         }
 
         // --- INICIALIZAÇÃO E LISTENERS ---
-        nextStepButton.addEventListener('click', () => goToStep(2));
+        goToScheduleButton.addEventListener('click', () => goToStep(2));
         backToServicesButton.addEventListener('click', () => goToStep(1));
-        confirmAppointmentButton.addEventListener('click', saveAppointment);
+        goToCustomerInfoButton.addEventListener('click', () => goToStep(3));
+        backToScheduleButton.addEventListener('click', () => goToStep(2));
+        customerForm.addEventListener('submit', saveAppointment);
+        confirmAppointmentButton.addEventListener('click', (e) => customerForm.dispatchEvent(new Event('submit', {cancelable: true, bubbles: true})));
         newAppointmentButton.addEventListener('click', () => {
-            // Recarrega a página para um novo agendamento
             window.location.reload();
         });
         
