@@ -261,6 +261,15 @@
                         <!-- Resumo do agendamento será inserido aqui -->
                     </div>
 
+                    <!-- Secção de Notificações -->
+                    <div id="notification-section" class="mt-6 p-4 border-t border-gray-700">
+                        <p class="text-gray-300">Gostaria de receber um lembrete no seu dispositivo?</p>
+                        <button id="enable-notifications-button" class="mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700">
+                            Sim, ativar lembretes
+                        </button>
+                        <p id="notification-status" class="text-sm text-gray-500 mt-2"></p>
+                    </div>
+
                     <button id="newAppointmentButton" class="mt-8 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none">
                         Fazer Novo Agendamento
                     </button>
@@ -282,7 +291,47 @@
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firestore.js";
+        
+        // --- LÓGICA DE ATUALIZAÇÃO DA PWA ---
+        let newWorker;
+
+        function showUpdateBanner() {
+            const banner = document.getElementById('update-banner');
+            banner.style.display = 'block';
+            setTimeout(() => {
+                banner.style.transform = 'translateY(0)';
+            }, 100);
+        
+            const reloadButton = document.getElementById('reload-button');
+            reloadButton.addEventListener('click', () => {
+                newWorker.postMessage({ action: 'skipWaiting' });
+            });
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    reg.addEventListener('updatefound', () => {
+                        newWorker = reg.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showUpdateBanner();
+                            }
+                        });
+                    });
+                }).catch(error => {
+                    console.error('Service Worker registration failed:', error);
+                });
+            });
+
+            let refreshing;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                window.location.reload();
+                refreshing = true;
+            });
+        }
         
         // --- CONFIGURAÇÃO INICIAL ---
         const firebaseConfig = {
@@ -322,6 +371,8 @@
         const vehicleSelect = document.getElementById('vehicleSelect');
         const removeVehicleButton = document.getElementById('removeVehicleButton');
         const newVehicleForm = document.getElementById('new-vehicle-form');
+        const enableNotificationsButton = document.getElementById('enable-notifications-button');
+        const notificationStatus = document.getElementById('notification-status');
         
         let selectedServices = new Map();
         let totalDuration = 0;
