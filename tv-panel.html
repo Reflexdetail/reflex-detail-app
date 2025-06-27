@@ -201,8 +201,8 @@
                     <p class="text-3xl font-bold text-indigo-300 w-24 text-center">${startTimeStr}</p>
                     <div class="flex-grow min-w-0">
                         <h3 class="text-xl font-bold text-white truncate">${customer.name || 'Cliente não informado'}</h3>
-                        <p class="text-lg text-gray-300 truncate">${vehicle.make || ''} ${vehicle.model || ''} (${vehicle.year || 'N/A'})</p>
-                        <p class="text-md text-gray-400 font-mono tracking-wider">${vehicle.plate || 'N/A'}</p>
+                        <p class="text-lg text-gray-300 truncate">${vehicle.make || 'Marca N/A'} ${vehicle.model || 'Modelo N/A'}</p>
+                        <p class="text-md text-gray-400">Ano: ${vehicle.year || 'N/A'} | Placa: <span class="font-mono tracking-wider">${vehicle.plate || 'N/A'}</span></p>
                     </div>
                 </div>
                 <div class="flex-grow overflow-y-auto no-scrollbar">
