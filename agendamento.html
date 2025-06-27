@@ -294,24 +294,25 @@
         import { getFirestore, collection, onSnapshot, query, addDoc, serverTimestamp, where, getDocs, setDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- LÓGICA DE ATUALIZAÇÃO DA PWA ---
-        let newWorker;
-
-        function showUpdateBanner() {
-            const banner = document.getElementById('update-banner');
-            banner.style.display = 'block';
-            setTimeout(() => {
-                banner.style.transform = 'translateY(0)';
-            }, 100);
-        
-            const reloadButton = document.getElementById('reload-button');
-            reloadButton.addEventListener('click', () => {
-                newWorker.postMessage({ action: 'skipWaiting' });
-            });
-        }
-
         if ('serviceWorker' in navigator) {
+            let newWorker;
+
+            function showUpdateBanner() {
+                const banner = document.getElementById('update-banner');
+                banner.style.display = 'block';
+                setTimeout(() => {
+                    banner.style.transform = 'translateY(0)';
+                }, 100);
+            
+                const reloadButton = document.getElementById('reload-button');
+                reloadButton.addEventListener('click', () => {
+                    newWorker.postMessage({ action: 'skipWaiting' });
+                });
+            }
+
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').then(reg => {
+                    console.log('Service Worker: registado com sucesso!', reg);
                     reg.addEventListener('updatefound', () => {
                         newWorker = reg.installing;
                         newWorker.addEventListener('statechange', () => {
@@ -343,7 +344,7 @@
   appId: "1:632260839620:web:a8a5bc4da9b69f8cfa6191"
 };
         
-        const VAPID_PUBLIC_KEY = "BBYYAwUJ5dAVQPbzARM95HobLuDruO1pV1KH6VMd_j1AaURnDi5CHmSPvbPpuv90CsYQ36cJZZppGJvxmrZ4XMg";
+        const VAPID_PUBLIC_KEY = "BBYYAwUJ5dAVQPbzARM95HobLuDruO1pV1KH6VMd_j1AaURnDi5CHmSPvbPpuv90CsYQ36cJZZppGJvxmrZ4XMgCOLE_AQUI_SUA_CHAVE_PÚBLICA_VAPID";
         
         const appId = firebaseConfig.projectId;
         let db, auth;
@@ -407,7 +408,10 @@
             if (stepNumber === 1) servicesSection.style.display = 'block';
             else if (stepNumber === 2) scheduleSection.style.display = 'block';
             else if (stepNumber === 3) customerInfoSection.style.display = 'block';
-            else if (stepNumber === 4) confirmationSection.style.display = 'block';
+            else if (stepNumber === 4) {
+                confirmationSection.style.display = 'block';
+                updateNotificationUI();
+            }
         }
 
         function formatPhoneNumber(event) {
@@ -506,21 +510,29 @@
         }
 
         // --- LÓGICA DE NOTIFICAÇÕES PUSH ---
-        async function subscribeToNotifications() {
+
+        function updateNotificationUI() {
             if (!('Notification' in window) || !('serviceWorker' in navigator)) {
                 notificationStatus.textContent = "Notificações não são suportadas neste navegador.";
+                enableNotificationsButton.style.display = 'none';
                 return;
             }
-
+            
             if (Notification.permission === 'granted') {
                 notificationStatus.textContent = "Lembretes já estão ativados!";
-                return;
-            }
-
-            if (Notification.permission === 'denied') {
+                enableNotificationsButton.style.display = 'none';
+            } else if (Notification.permission === 'denied') {
                 notificationStatus.textContent = "Permissão para notificações bloqueada. Altere nas configurações do seu navegador.";
-                return;
+                 enableNotificationsButton.style.display = 'none';
+            } else {
+                notificationStatus.textContent = "";
+                enableNotificationsButton.style.display = 'inline-flex';
             }
+        }
+
+        async function subscribeToNotifications() {
+            enableNotificationsButton.disabled = true;
+            notificationStatus.textContent = "A processar...";
 
             try {
                 const permission = await Notification.requestPermission();
@@ -535,20 +547,22 @@
                     const phone = customerPhoneInput.value.replace(/\D/g, '');
                     if (!phone) {
                         notificationStatus.textContent = "Número de telefone não encontrado para guardar a subscrição.";
+                        enableNotificationsButton.disabled = false;
                         return;
                     }
 
                     // Guarda a subscrição no Firestore
                     await setDoc(doc(db, "pushSubscriptions", phone), JSON.parse(JSON.stringify(subscription)));
                     
-                    notificationStatus.textContent = "Lembretes ativados com sucesso!";
-                    enableNotificationsButton.style.display = 'none';
+                    updateNotificationUI();
                 } else {
-                    notificationStatus.textContent = "Permissão para notificações não concedida.";
+                   updateNotificationUI();
                 }
             } catch (error) {
                 console.error("Erro ao subscrever para notificações:", error);
                 notificationStatus.textContent = "Ocorreu um erro ao ativar os lembretes.";
+            } finally {
+                enableNotificationsButton.disabled = false;
             }
         }
 
