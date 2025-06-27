@@ -188,6 +188,7 @@
                 const card = document.createElement('div');
                 card.className = `appointment-card status-agendado bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col min-h-0`;
                 
+                // Extração de dados segura com optional chaining e valores padrão
                 const startTime = data.startTime?.toDate();
                 const customer = data.customer || {};
                 const vehicle = customer.vehicle || {};
@@ -202,9 +203,16 @@
                 const vehicleYear = vehicle.year || 'N/A';
                 const vehiclePlate = vehicle.plate || 'N/A';
 
-                let servicesHtml = '<li>Nenhum serviço listado</li>';
-                if (services.length > 0) {
-                    servicesHtml = services.map(s => `<li>${s.name || 'Serviço sem nome'}</li>`).join('');
+                // CORREÇÃO: Lógica mais robusta para garantir que a lista de serviços é exibida
+                let servicesHtml = '<li>Nenhum serviço listado.</li>';
+                if (Array.isArray(services) && services.length > 0) {
+                    servicesHtml = services.map(s => {
+                        // Verifica se 's' é um objeto e tem a propriedade 'name'
+                        if (typeof s === 'object' && s !== null && s.name) {
+                            return `<li>${s.name}</li>`;
+                        }
+                        return '<li>Serviço mal formatado</li>'; // Fallback para dados inesperados
+                    }).join('');
                 }
 
                 card.innerHTML = `
