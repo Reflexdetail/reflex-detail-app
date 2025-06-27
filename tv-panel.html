@@ -34,6 +34,14 @@
         .page {
             transition: opacity 0.75s ease-in-out;
         }
+        /* Esconde a barra de rolagem mas mantém a funcionalidade */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
     </style>
 </head>
 <body class="h-full flex flex-col overflow-hidden">
@@ -179,24 +187,26 @@
 
         function createAppointmentCard(data) {
             const card = document.createElement('div');
-            card.className = `appointment-card status-agendado bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col`;
+            // AJUSTE: Adicionado min-h-0 para ajudar o flexbox a se comportar dentro da grelha
+            card.className = `appointment-card status-agendado bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col min-h-0`;
             
             const startTime = data.startTime?.toDate();
             const customer = data.customer || {};
             const vehicle = customer.vehicle || {};
             const timeOptions = { hour: '2-digit', minute: '2-digit' };
             const startTimeStr = startTime ? startTime.toLocaleTimeString('pt-BR', timeOptions) : 'N/A';
-            const servicesHtml = data.services?.map(s => `<li class="truncate">${s.name || 'Serviço sem nome'}</li>`).join('') || '<li>Nenhum serviço listado</li>';
+            const servicesHtml = data.services?.map(s => `<li>${s.name || 'Serviço sem nome'}</li>`).join('') || '<li>Nenhum serviço listado</li>';
 
             card.innerHTML = `
-                <div class="flex items-center gap-4 border-b border-gray-700 pb-2 mb-2">
+                <div class="flex-shrink-0 flex items-center gap-4 border-b border-gray-700 pb-2 mb-2">
                     <p class="text-3xl font-bold text-indigo-300">${startTimeStr}</p>
-                    <div class="flex-grow">
+                    <div class="flex-grow min-w-0">
                         <h3 class="text-xl font-bold text-white truncate">${customer.name || 'Cliente não informado'}</h3>
-                        <p class="text-lg text-gray-400">${vehicle.make || ''} ${vehicle.model || ''}</p>
+                        <p class="text-lg text-gray-400 truncate">${vehicle.make || ''} ${vehicle.model || ''}</p>
                     </div>
                 </div>
-                <div>
+                <!-- AJUSTE: Esta div agora é flexível e rolável internamente -->
+                <div class="flex-grow overflow-y-auto no-scrollbar">
                     <h4 class="font-semibold text-gray-300">Serviços:</h4>
                     <ul class="list-disc list-inside text-gray-400 text-lg space-y-1 mt-1">
                         ${servicesHtml}
